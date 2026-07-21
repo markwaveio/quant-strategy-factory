@@ -1,0 +1,24 @@
+# 量化策略工厂 · 默认配置(mock 模式,离线可跑)
+run_id: default
+
+data:
+  mode: mock              # mock | live(live 需实现真实数据源)
+  symbols: [DEMO.A, DEMO.B, DEMO.C]
+  lookback_days: 250
+  seed: 42                # 固定种子 → 可复现
+
+evaluation:
+  provider: mock          # mock | anthropic(anthropic 需 ANTHROPIC_API_KEY)
+  model: claude-opus-4-8  # 真实评审时用最新 Claude Opus 4.8
+  roles: [skeptic, risk_officer, committee]
+  approve_threshold: 0.6
+  max_drawdown_limit: 0.25  # 风险官红线:回撤超过 25% 直接否决
+
+backtest:
+  initial_cash: 1000000
+  fee_bps: 5              # 单边手续费(万分之)
+  slippage_bps: 2        # 滑点(万分之)
+  risk_free_rate: 0.02   # 年化无风险利率(算夏普用)
+
+memory_path: data_store/memory/memory.jsonl
+report_dir: reports

@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 环境与密钥(绝不入库)
+.env
+*.key
+configs/secrets.yaml
+
+# 数据落地:保留目录结构,忽略实际数据文件
+data_store/raw/*
+data_store/processed/*
+data_store/memory/*
+!data_store/**/.gitkeep
+
+# 生成的报告
+reports/
+*.report.json
+*.report.md
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
