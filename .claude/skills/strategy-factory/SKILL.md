@@ -59,10 +59,20 @@ description: 生产可复用的量化策略——参数空间搜索 + 多标的�
 
 ```json
 "parameterSpace": {
-  "fast_period": [5, 8, 10, 15, 20],
-  "slow_period": {"min": 20, "max": 60, "step": 10}
+  "indicator_params.fast_period": [5, 8, 10, 15, 20],
+  "indicator_params.slow_period": {"min": 20, "max": 60, "step": 10}
 }
 ```
+
+> 🚨 **key 必须带 `indicator_params.` 前缀。** 写成裸 `fast_period` 会被
+> **静默忽略** —— 任务照常 succeeded、照常返回 N 组"结果",但每组参数都是
+> 默认值,评分完全相同。实测踩过:16 组变体全部返回 42.1 分。
+>
+> **自检方法**:结果里如果所有 `overallScore` 都一样,或 `overrides.indicatorParams`
+> 为空,就是前缀写错了 —— **不要拿这种结果做任何判断**。
+>
+> 风控参数用 `strategy_config.risk.stopLossPct`、仓位用
+> `strategy_config.position.entryPct`,同样需要前缀。
 
 三种写法:显式列表 `[5,8,10]` / 区间 `{"min":20,"max":60,"step":10}` / 标量 `10`(固定)。
 

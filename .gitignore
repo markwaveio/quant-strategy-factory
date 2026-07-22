@@ -28,6 +28,7 @@ data_store/daily/*
 
 # 生成的报告
 reports/
+!reports/strategy-card-*.md   # 示例策略卡:保留作为产出物范例
 *.report.json
 *.report.md
 
