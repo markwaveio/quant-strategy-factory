@@ -33,9 +33,16 @@ description: 每日自动扫描标的池,产出市场日报。无需指定标的
 
 | 层 | 来源 | 说明 |
 |---|---|---|
-| ① **持仓** | `list_portfolio_positions` | 必扫。有真金白银在里面,即使无信号也要在日报列出 |
+| ①a **富途持仓** | `python3 scripts/futu_positions.py --quiet` | **主力持仓源**。读 OpenD,配置见 `configs/opend.yaml` |
+| ①b QuantDinger 持仓 | `list_portfolio_positions` | 补充。仅记录在 QuantDinger 里的手工持仓 |
 | ② **关注池** | 配置文件 `watchlist.<市场>` | 你主动关心的 |
 | ③ **默认池** | `search_symbols(market)` **空查询** | 兜底/扩展。港/美/A股各 10 个,加密 20 个 |
+
+**持仓必扫,即使无信号也要在日报单独列出** —— 你有敞口,不看不行。
+
+富途 helper 输出已自动把 `HK.00700` 映射成 `HKStock` / `00700`,可直接用。它是**只读**的(仅 `position_list_query`),不下单。OpenD 没启动时会报错,**跳过该层继续跑**,并在日报注明。
+
+> ⚠️ `configs/opend.yaml` 的 `trd_env` 默认 `SIMULATE`(模拟盘)。改成 `REAL` 会把**真实持仓**写进 `data_store/daily/` 快照 —— 改之前想清楚。
 
 **降级规则**:②为空且 `fallback_to_default: true` → 用③补齐。
 
@@ -97,6 +104,23 @@ get_klines(market=..., symbol=..., timeframe="1d", limit=<scan.lookback_bars>)
 > **含义:普涨时「触发了」的信息量很低,「谁最强」才有信息量。**
 > 所以排序(score 降序)比过滤(阈值)更重要,阈值只用来挡掉平静市场里的垃圾信号。
 > 若日报连续多日「无事」或连续多日「满员」,说明阈值与当前市况脱节,该调了。
+
+### 市况自适应:普涨时抬高 regime_shift 的权重
+
+先判断市况 —— **全池 `strength` 触发占比 ≥ 30%** 即视为**普涨行情**。
+
+普涨时,`strength` 信号是"随大流",信息量低;而**背离型信号才稀缺**:
+
+| 市况 | 排序规则 |
+|---|---|
+| 普涨(strength ≥30%) | `regime_shift` 与 `anomaly` 的 score **×1.5** 后再排序 |
+| 正常 | 按原始 score 排序 |
+
+**2026-07-22 的实例**:前 4 名全是 strength 0.5~0.71(大家都在涨,信息量低);
+第 5 名建设银行 `regime_shift 0.41` —— **价格几乎没动(动量 -0.9%)但波动率放大 1.83 倍**。
+这种"价平量变"的背离,在普涨行情里比又一只上涨股值钱得多。加权后它会升到前列。
+
+日报里要说明当前判定为哪种市况,让读的人知道排序依据。
 
 ---
 

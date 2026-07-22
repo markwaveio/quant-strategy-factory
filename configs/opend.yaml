@@ -1,0 +1,38 @@
+# 富途 OpenD 持仓接入配置
+#
+# 用途:把富途账户的持仓作为每日扫描标的池的【第①层】(必扫)。
+# 前提:OpenD 客户端已启动(默认 127.0.0.1:11111),且已装 futu-api。
+#
+#   检查 OpenD:  nc -z 127.0.0.1 11111 && echo OK
+#   检查 SDK:    python3 -c "import futu; print(futu.__version__)"
+#
+# 本项目只做【只读持仓查询】,不下单、不改单。交易请走富途官方 skill。
+
+opend:
+  host: 127.0.0.1
+  port: 11111
+
+  # ⚠️ 交易环境 —— 默认模拟盘
+  #   SIMULATE = 模拟盘(安全,推荐)
+  #   REAL     = 真实账户(会读取真金白银的持仓)
+  # 改成 REAL 前请想清楚:日报会把你的真实持仓写进 data_store/daily/ 快照。
+  trd_env: SIMULATE
+
+  # 要查询的市场(HK 港股 / US 美股 / CN A股)
+  markets: [HK, US]
+
+  # 券商主体。多数用户是 FUTUSECURITIES;若你是富途新加坡/澳洲等主体需改。
+  security_firm: FUTUSECURITIES
+
+  # 单次查询超时(秒)
+  timeout: 20
+
+# 代码格式映射:富途 → QuantDinger
+#   HK.00700  → HKStock / 00700
+#   US.AAPL   → USStock / AAPL
+#   CN.600519 → CNStock / 600519
+# 映射由 scripts/futu_positions.py 自动完成,一般无需改动。
+market_map:
+  HK: HKStock
+  US: USStock
+  CN: CNStock
