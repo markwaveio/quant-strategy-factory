@@ -22,6 +22,9 @@ qsf run
 # 用配置文件跑,并把 Markdown 报告落盘
 qsf run --config configs/default.yaml --report reports/latest.md
 
+# 启用参数网格搜索(configs 里设 strategy.param_search: true)
+# 关闭时用的是【未经搜索】的基线默认值,其回测结论不能作为投资依据
+
 # 逐层观察数据是怎么加工的(教学向)
 python examples/run_pipeline.py
 
@@ -35,10 +38,10 @@ pytest
 |---|---|---|---|
 | ① | **数据层** | 采集 → 标准化 → 特征提取 → `MarketSnapshot` | [data/](src/qsf/data/):mock 采集器(行情/新闻/财报)、清洗、特征(年化波动率、动量、趋势强度、情绪、**黑天鹅强度**) |
 | ② | **洞察层** | `MarketSnapshot` → `Insight[]` | [insight/engine.py](src/qsf/insight/engine.py):异常(z-score)、走强/走弱、结构切换(波动率抬升)、事件驱动(黑天鹅/极端情绪) |
-| ③ | **策略生成层** | 洞察 → `StrategyProposal[]` | [strategy/](src/qsf/strategy/):趋势(双均线)、均值回归(布林/z-score)、新闻事件三族。**参数应来自搜索而非人工指定** — 见 [strategy-factory skill](.claude/skills/strategy-factory/SKILL.md) |
+| ③ | **策略生成层** | 洞察 → `StrategyProposal[]` | [strategy/](src/qsf/strategy/):趋势(双均线)、均值回归(布林/z-score)、新闻事件三族。**参数来自网格搜索**(`strategy.param_search: true`,见 [search.py](src/qsf/strategy/search.py));关闭时用基线默认值,仅供离线跑通 |
 | ④ | **评估层(AI 挑战)** | 提案+回测 → `EvaluationResult` | [evaluation/](src/qsf/evaluation/):**质疑者**(过拟合/拍脑袋参数)、**风险官**(最坏亏多少,一票否决)、**综合评估官**(投委会裁决) |
 | ⑤ | **记忆层** | 结果 → `MemoryRecord` (JSONL) | [memory/store.py](src/qsf/memory/store.py):哪些策略成功过/失败过 + 一句教训,可检索 |
-| ⑥ | **回测层** | 提案+行情 → `BacktestMetrics` | [backtest/](src/qsf/backtest/):向量化引擎,计手续费+滑点,产出复利收益/最大回撤/夏普/胜率 |
+| ⑥ | **回测层** | 提案+行情 → `BacktestMetrics` | [backtest/](src/qsf/backtest/):**smoke backtest** —— 向量化、计手续费+滑点+信号滞后,用于快速淘汰明显不行的策略。**未建模撮合价/停牌/复权/容量/融券/组合现金/相关性/税费**,真实绩效以 QuantDinger 服务端回测为准 |
 | ⑦ | **决策层** | 汇总 → `DecisionReport` | [decision/decider.py](src/qsf/decision/decider.py):只把通过评审的策略转为买/卖/持有/回避 + 仓位建议 |
 | ⑧ | **复盘层** | 一轮结果 → `ReviewNote` | [review/reviewer.py](src/qsf/review/reviewer.py):通过率、最佳策略、关键收获与改进方向 |
 
@@ -144,6 +147,15 @@ examples/       # 端到端示例
 tests/          # 分层测试 + e2e
 configs/        # YAML 配置
 ```
+
+## 已知局限(诚实清单)
+
+| 局限 | 现状 | 缓解 |
+|---|---|---|
+| **回测是 smoke 级** | 未建模撮合价/停牌/复权/成交量容量/融券/组合现金占用/多标的相关性/税费差异 | 只用于粗筛;真实绩效走 QuantDinger 服务端回测 |
+| **参数搜索仅网格** | `param_search` 默认关闭;开启也只是单机网格,无样本外分割 | 严肃搜索走 QuantDinger `structured-tune`(内置 OOS 70/30) |
+| **ClaudeLLMJudge 未经生产验证** | 全程 `pragma: no cover`,单测只覆盖 Mock | 启用前必须跑 `scripts/verify_claude_judge.py` 真实验收 |
+| **记忆层是单机 JSONL** | 有溯源与相似检索,但无并发控制、无索引 | 数据量大后应换 SQLite/向量库,接口不变 |
 
 ## 免责声明
 

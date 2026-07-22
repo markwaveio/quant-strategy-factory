@@ -40,8 +40,14 @@ def build_strategy(proposal: StrategyProposal) -> Strategy:
 
 
 class StrategyGenerator:
-    def __init__(self, *, max_per_symbol: int = 3) -> None:
+    def __init__(self, *, max_per_symbol: int = 3, searcher=None) -> None:
+        """`searcher`:传入 `ParamSearcher` 则参数来自**网格搜索**;
+        为 None 时用下方基线默认值 —— 那些默认值**未经搜索**,
+        仅供离线 smoke 跑通流程,不可作为投资依据。
+        """
         self.max_per_symbol = max_per_symbol
+        self.searcher = searcher
+        self.search_info: dict[str, object] = {}   # family -> ParamSearchInfo
 
     def _new_id(self, family: StrategyFamily, symbol: str) -> str:
         return f"{family.value}:{symbol}:{uuid.uuid4().hex[:6]}"
@@ -52,6 +58,18 @@ class StrategyGenerator:
         by_symbol: dict[str, list[Insight]] = {}
         for ins in insights:
             by_symbol.setdefault(ins.symbol, []).append(ins)
+
+        # 若配了 searcher,先在全池上搜出各族的稳健参数(一次搜索,全池复用)
+        searched: dict[str, dict] = {}
+        if self.searcher is not None:
+            for fam in ("trend", "mean_reversion"):
+                params, info, _ = self.searcher.search(fam, snapshot.symbols, snapshot)
+                if params:
+                    searched[fam] = params
+                    self.search_info[fam] = info
+
+        def _params(fam: str, default: dict) -> dict:
+            return dict(searched.get(fam, default))
 
         proposals: list[StrategyProposal] = []
         for symbol in snapshot.symbols:
@@ -70,7 +88,7 @@ class StrategyGenerator:
                         family=StrategyFamily.TREND,
                         symbol=symbol,
                         rationale="标的走强/正动量,顺势做趋势跟随",
-                        params={"fast": 10, "slow": 30},
+                        params=_params("trend", {"fast": 10, "slow": 30}),
                         triggered_by=summaries,
                     )
                 )
@@ -84,7 +102,7 @@ class StrategyGenerator:
                         family=StrategyFamily.MEAN_REVERSION,
                         symbol=symbol,
                         rationale="波动放大/震荡市,做均值回归",
-                        params={"window": 20, "entry_z": 1.0},
+                        params=_params("mean_reversion", {"window": 20, "entry_z": 1.0}),
                         triggered_by=summaries,
                     )
                 )
@@ -113,7 +131,7 @@ class StrategyGenerator:
                         family=StrategyFamily.TREND,
                         symbol=symbol,
                         rationale="无显著信号,给出基线趋势提案供评估",
-                        params={"fast": 10, "slow": 30},
+                        params=_params("trend", {"fast": 10, "slow": 30}),
                         triggered_by=[],
                     )
                 )

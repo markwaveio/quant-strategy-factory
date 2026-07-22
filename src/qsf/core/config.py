@@ -20,6 +20,16 @@ class DataConfig(BaseModel):
     seed: int = 42                           # mock 数据的随机种子,保证可复现
 
 
+class StrategyConfig(BaseModel):
+    """策略生成配置。"""
+
+    # 参数是否来自网格搜索。False 时用基线默认值 —— 那些值**未经搜索**,
+    # 只适合离线跑通流程,其回测结论不能作为投资依据。
+    param_search: bool = False
+    max_variants: int = 48          # 搜索组合数上限
+    min_trades: int = 5             # 任一标的交易数低于此值的参数组淘汰
+
+
 class EvaluationConfig(BaseModel):
     provider: str = "mock"                   # mock | anthropic
     model: str = "claude-opus-4-8"           # 真实评审时用最新 Claude 模型
@@ -44,6 +54,7 @@ class Config(BaseModel):
 
     run_id: str = "adhoc"
     data: DataConfig = Field(default_factory=DataConfig)
+    strategy: StrategyConfig = Field(default_factory=StrategyConfig)
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
     backtest: BacktestConfig = Field(default_factory=BacktestConfig)
     memory_path: str = "data_store/memory/memory.jsonl"

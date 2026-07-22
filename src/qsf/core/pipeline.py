@@ -67,7 +67,19 @@ class Pipeline:
         self.config = config
         self.data_provider = data_provider or build_data_provider(config.data)
         self.insight_engine = insight_engine or InsightEngine()
-        self.strategy_generator = strategy_generator or StrategyGenerator()
+        if strategy_generator is not None:
+            self.strategy_generator = strategy_generator
+        elif config.strategy.param_search:
+            # 参数来自网格搜索 —— 复用同一个 smoke 回测引擎
+            from qsf.strategy.search import ParamSearcher
+            self.strategy_generator = StrategyGenerator(
+                searcher=ParamSearcher(
+                    BacktestEngine(config.backtest),
+                    max_variants=config.strategy.max_variants,
+                )
+            )
+        else:
+            self.strategy_generator = StrategyGenerator()
         self.evaluation_board = evaluation_board or EvaluationBoard(config.evaluation)
         self.backtest_engine = backtest_engine or BacktestEngine(config.backtest)
         self.memory_store = memory_store or MemoryStore(config.memory_path)

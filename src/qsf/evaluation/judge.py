@@ -229,7 +229,21 @@ _OPINION_SCHEMA = {
 
 
 class ClaudeLLMJudge(LLMJudge):
-    """用 Claude 做真实评审(骨架)。
+    """用 Claude 做真实评审。
+
+    ⚠️ **API 漂移风险 —— 启用前必须跑 `scripts/verify_claude_judge.py`。**
+
+    本类全程 `pragma: no cover`,单元测试只覆盖 MockLLMJudge。以下参数
+    高度绑定 Anthropic SDK 的当前形态,任何一处变更都会让真实评审在
+    **生产时**才失败,而 mock 测试永远是绿的:
+
+      · 模型名 `claude-opus-4-8`
+      · `thinking={"type": "adaptive"}`(旧版是 budget_tokens,已废弃)
+      · `output_config={"format": {...}}`(旧版是顶层 output_format,已废弃)
+      · 响应解析:从 `resp.content` 取 `type == "text"` 的块
+
+    验收脚本会用真实 API 逐项校验这些契约,并额外验证判断力
+    (一个 5 笔交易 / 0% 胜率的策略绝不该被判 APPROVE)。
 
     默认不被流水线使用——只有把 config.evaluation.provider 设为 "anthropic"
     且环境变量里有 ANTHROPIC_API_KEY 时才会走到这里。

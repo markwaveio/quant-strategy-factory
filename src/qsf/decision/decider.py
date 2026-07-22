@@ -17,17 +17,25 @@ from qsf.core.schema import (
     EvaluationResult,
     Insight,
     MarketSnapshot,
-    StrategyFamily,
     StrategyProposal,
     Verdict,
 )
 
-# 不同策略族「通过后」对应的建议动作
-_FAMILY_ACTION = {
-    StrategyFamily.TREND: Action.BUY,
-    StrategyFamily.MEAN_REVERSION: Action.BUY,     # 均值回归这里简化为择机做多
-    StrategyFamily.NEWS_EVENT: Action.BUY,
-}
+
+def _action_from_position(final_position: float) -> Action:
+    """由策略「此刻的目标仓位」推导建议动作。
+
+    **不能按策略族查表。** 均值回归在超涨时持仓 -1.0(做空),
+    若一律映射成 BUY,一个靠做空赚钱的策略会被报成"买入"——
+    报告层的严重误导。趋势族同理可能翻空。
+
+    约定:>0 做多 / <0 做空 / ==0 当前无仓位(观望)。
+    """
+    if final_position > 0:
+        return Action.BUY
+    if final_position < 0:
+        return Action.SELL
+    return Action.HOLD
 
 
 class Decider:
@@ -101,7 +109,9 @@ class Decider:
         metrics: BacktestMetrics | None,
     ) -> Decision:
         conviction = evaluation.aggregate_score
-        action = _FAMILY_ACTION.get(proposal.family, Action.HOLD)
+        # 按策略「此刻的实际仓位方向」定动作,而非按族查表
+        final_pos = metrics.final_position if metrics is not None else 0.0
+        action = _action_from_position(final_pos)
 
         # 仓位:基础 * 信心,再按回撤惩罚(回撤越大仓位越小)
         weight = self.base_weight * conviction
@@ -111,7 +121,14 @@ class Decider:
             penalty = max(0.3, 1.0 - dd / max(self.config.max_drawdown_limit, 1e-6))
             weight *= penalty
 
+        # 当前无仓位 → 策略此刻不建议入场,权重归零避免误导
+        if action == Action.HOLD:
+            weight = 0.0
+            warnings.append("策略当前无持仓信号,建议观望而非入场")
+
         reasons = [proposal.rationale]
+        if action == Action.SELL:
+            reasons.append(f"策略当前为空头仓位({final_pos:+.1f}),建议方向为做空/减持")
         if metrics is not None:
             reasons.append(
                 f"回测:夏普 {metrics.sharpe:.2f}、收益 {metrics.total_return:.1%}、回撤 {metrics.max_drawdown:.1%}"

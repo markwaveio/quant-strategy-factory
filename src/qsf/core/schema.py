@@ -199,7 +199,12 @@ class EvaluationResult(BaseModel):
 
 
 class BacktestMetrics(BaseModel):
-    """回测绩效指标。"""
+    """回测绩效指标。
+
+    ⚠️ 这是 **smoke backtest** 的产出——用于快速淘汰明显不行的策略,
+    不是实盘级绩效。未建模的约束见 `qsf.backtest.engine` 模块文档。
+    真实绩效以 QuantDinger 服务端回测为准。
+    """
 
     strategy_id: str
     total_return: float
@@ -209,6 +214,9 @@ class BacktestMetrics(BaseModel):
     win_rate: float
     n_trades: int
     equity_curve: list[float] = Field(default_factory=list)
+    # 最终目标仓位:>0 多头 / <0 空头 / 0 空仓。
+    # 决策层据此推导买卖方向 —— 不能只看策略族,因为同一族既可能做多也可能做空。
+    final_position: float = 0.0
 
 
 # --------------------------------------------------------------------------- #
@@ -222,6 +230,41 @@ class Outcome(str, Enum):
     NEUTRAL = "neutral"
 
 
+class BacktestProvenance(BaseModel):
+    """回测溯源:让「当时那个结论」日后可复现、可比较。
+
+    没有这些字段,复盘时无法回答「为什么当初判断有效、现在却不行」——
+    可能是市场变了,也可能只是数据版本或回测配置换了。
+    """
+
+    engine: str = "qsf-smoke"          # qsf-smoke | quantdinger
+    config_hash: str = ""              # 回测配置指纹(手续费/滑点/初始资金等)
+    data_source: str = ""              # mock | quantdinger | ...
+    bars: int = 0                      # 用了多少根 K 线
+    start_date: str = ""               # 回测区间(YYYY-MM-DD)
+    end_date: str = ""
+    # 样本外验证信息 —— 没有 OOS 的结论可信度要打折
+    oos_enabled: bool = False
+    oos_sharpe: float | None = None    # 样本外夏普(与训练集对比可判过拟合)
+    train_sharpe: float | None = None
+
+
+class ParamSearchInfo(BaseModel):
+    """参数来源:区分「搜出来的」和「拍脑袋的」。
+
+    质疑者需要这个 —— 未经搜索的参数,其回测结论本身就不可信。
+    """
+
+    searched: bool = False                                  # False = 人工指定
+    space: dict[str, list] = Field(default_factory=dict)    # 搜过的参数空间
+    n_evaluated: int = 0                                    # 实际评估了多少组
+    method: str = ""                                        # grid | random | manual
+    # 多标的稳健性(单标的最优 ≈ 过拟合,这些字段用来判断是否稳健)
+    pool_symbols: list[str] = Field(default_factory=list)
+    pool_coverage: float | None = None   # 在几成标的上为正
+    pool_worst: float | None = None      # 最差标的的表现
+
+
 class MemoryRecord(BaseModel):
     """一条经验记忆:某个策略在某种市场条件下的成败。"""
 
@@ -233,6 +276,12 @@ class MemoryRecord(BaseModel):
     metrics: BacktestMetrics | None = None
     market_context: dict[str, float] = Field(default_factory=dict)  # 当时的关键特征
     lesson: str = ""             # 一句话教训 / 经验
+    # --- 复盘所需的溯源信息 --- #
+    params: dict[str, float] = Field(default_factory=dict)   # 当时用的参数
+    param_search: ParamSearchInfo | None = None              # 参数怎么来的
+    provenance: BacktestProvenance | None = None             # 回测怎么跑的
+    strategy_version: str = "v1"                             # 策略代码版本
+    regime: str = ""                                         # 当时市况(趋势/震荡/普涨…)
 
 
 # --------------------------------------------------------------------------- #
