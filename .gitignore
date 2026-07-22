@@ -23,6 +23,7 @@ configs/secrets.yaml
 data_store/raw/*
 data_store/processed/*
 data_store/memory/*
+data_store/daily/*
 !data_store/**/.gitkeep
 
 # 生成的报告

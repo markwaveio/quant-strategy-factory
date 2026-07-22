@@ -1,0 +1,53 @@
+# 每日扫描的标的池配置
+#
+# 标的池由三层合并而成(去重后按优先级排序):
+#   ① 持仓      —— 自动从 QuantDinger 拉取,必扫
+#   ② 关注池    —— 就是下面这份,你主动关心的
+#   ③ 默认池    —— QuantDinger 各市场的默认标的,兜底/扩展
+#
+# 下面留空也能跑:关注池为空时自动降级到默认池。
+
+watchlist:
+  # 港股 —— 5 位数字,如 "00700" 腾讯
+  HKStock: []
+  # 美股 —— 字母代码,如 "AAPL"
+  USStock: []
+  # A股 —— 6 位数字,如 "600519" 茅台
+  #   注意:QuantDinger 默认隐藏 A 股,需在其 env 设 SHOW_CN_STOCK=true
+  CNStock: []
+  # 加密 —— 交易对,如 "BTC/USDT"
+  #   注意:国内网络下交易所多不可达,行情可能为空
+  Crypto: []
+
+scan:
+  # 持仓是否必扫(即使无信号也在日报里列出)
+  include_positions: true
+
+  # 关注池为空时,是否降级用 QuantDinger 默认池
+  fallback_to_default: true
+
+  # 默认池每个市场取几个(上限:股票市场 10、加密 20)
+  default_pool_size: 10
+
+  # 参与扫描的市场(留空 = 全部)
+  markets: [HKStock, USStock]
+
+  # 粗筛阶段:拉多少根 K 线(≥60 才能算结构切换,推荐 120)
+  lookback_bars: 120
+
+  # 深挖阶段:每日最多深挖几个标的(控制成本)
+  #   深挖 = 拉财报 + 搜新闻 + 出完整洞察
+  max_deep_dive: 5
+
+  # 深挖门槛:粗筛 score 达到多少才值得深挖
+  #
+  # 实测校准(2026-07-22,港股+美股各10个):
+  #   阈值 0.25 → 8/20 触发且全部过线,过滤器形同虚设,实际靠 max_deep_dive 硬截断
+  #   当时市场普涨(动量普遍 +10~20%),strength 大量触发
+  # 结论:普涨行情里「触发了」信息量低,「谁最强」才有信息量。
+  #      门槛提到 0.35 挡掉边缘信号,真正的排序交给 score 降序 + max_deep_dive。
+  # 若日报连续多日无人过线,说明市场平静,可临时下调到 0.25 观察。
+  deep_dive_score_threshold: 0.35
+
+# 历史快照落盘位置(用于「较昨日变化」检测)
+snapshot_dir: data_store/daily
