@@ -1,0 +1,33 @@
+# 量化策略工厂 · QuantDinger 真实数据配置(live 模式)
+#
+# 前置条件:
+#   1. QuantDinger 网关在 127.0.0.1:15000 运行
+#   2. 环境变量里有有效的 agent token:
+#        export QD_AGENT_TOKEN=qd_agent_xxx
+#      (推荐放在 ~/.openviking/quantdinger.env 里,用时 source 一下)
+#
+# 运行:
+#   qsf run --config configs/quantdinger.yaml --report reports/live.md
+run_id: quantdinger
+
+data:
+  mode: live              # ← 关键:切到 QuantDinger 真实数据源
+  symbols: []             # ← 留空 = 自动从你的 QuantDinger watchlist 拉取自选
+                          #    想固定盯某几个,就在这里显式写,例如 [BTCUSDT, ETHUSDT, AAPL]
+  lookback_days: 250      # 回测/特征用的历史 K 线根数(会作为 kline 的 limit)
+
+evaluation:
+  provider: mock          # AI 评审仍走 mock;要用真实 Claude 改成 anthropic 并设 ANTHROPIC_API_KEY
+  model: claude-opus-4-8
+  roles: [skeptic, risk_officer, committee]
+  approve_threshold: 0.6
+  max_drawdown_limit: 0.25
+
+backtest:
+  initial_cash: 1000000
+  fee_bps: 5
+  slippage_bps: 2
+  risk_free_rate: 0.02
+
+memory_path: data_store/memory/memory.jsonl
+report_dir: reports

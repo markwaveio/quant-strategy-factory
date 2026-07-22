@@ -67,13 +67,34 @@ export ANTHROPIC_API_KEY=sk-ant-...
 
 把配置里的 `evaluation.provider` 从 `mock` 改成 `anthropic` 即可。三个角色会改由 Claude 扮演;prompt 与 schema 已在 [judge.py](src/qsf/evaluation/judge.py) 里写好。
 
-### 真实数据源
+### 真实数据源:QuantDinger 本地平台(已实现)
+
+把本地量化平台 [QuantDinger](http://127.0.0.1:15000) 作为真实数据源——**8 层逻辑一个字都不用改**,只是把 mock 采集器换成打真实网关的采集器。
 
 ```bash
-pip install -e ".[data]"   # akshare / yfinance / feedparser
+# 1. 确保 QuantDinger 网关在 127.0.0.1:15000 运行
+# 2. 导出 agent token(绝不入库,从环境变量读)
+export QD_AGENT_TOKEN=qd_agent_xxx      # 建议放 ~/.openviking/quantdinger.env 后 source
+
+# 3. 跑真实数据(标的自动从你的 QuantDinger watchlist 拉取)
+qsf run --config configs/quantdinger.yaml --report reports/live.md
 ```
 
-实现一个满足 [`DataProvider`](src/qsf/data/provider.py) 协议的类(或替换其中的采集器),把 `data.mode` 设为 `live`。采集器协议见 [collectors/base.py](src/qsf/data/collectors/base.py)。
+映射关系:
+
+| QSF 层 | QuantDinger 端点 |
+|---|---|
+| 行情(OHLCV) | `GET /api/indicator/kline` |
+| 新闻(情绪/黑天鹅特征的原料) | `GET /api/global-market/news` |
+| 标的来源(watchlist) | `GET /api/market/watchlist/get` |
+
+实现见 [data/quantdinger/](src/qsf/data/quantdinger/):`client.py`(认证+重试)、`collectors.py`(**容错解析**,兼容多种字段名/时间戳/响应包裹形态)、`provider.py`(装配 `MarketSnapshot`)。`configs/quantdinger.yaml` 里 `data.symbols` 留空即从 watchlist 拉;想固定盯某几个就显式写。
+
+> 单标的行情拉取失败会**降级跳过**而非拖垮全局;财报端点当前平台未暴露,返回空不影响其它层。
+
+### 接其它数据源
+
+数据层按 [`DataProvider`](src/qsf/data/provider.py) 协议解耦——照 QuantDinger 的写法(client + 满足 [collectors/base.py](src/qsf/data/collectors/base.py) 协议的采集器 + provider),再在 `build_data_provider()` 里加一个 `mode` 分支即可。`pip install -e ".[data]"` 备有 akshare / yfinance / feedparser。
 
 ## 目录结构
 

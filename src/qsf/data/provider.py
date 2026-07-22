@@ -70,3 +70,19 @@ class MockDataProvider:
             reports=reports,
             features=features,
         )
+
+
+def build_data_provider(config: DataConfig) -> DataProvider:
+    """按 config.mode 选择数据源。
+
+    - "mock"(默认):离线可复现的 MockDataProvider。
+    - "live"/"quantdinger":接入本地 QuantDinger 平台的真实数据。
+      QuantDinger 依赖延迟导入,mock 模式完全不受影响。
+    """
+    mode = (config.mode or "mock").lower()
+    if mode in ("live", "quantdinger", "qd"):
+        # 延迟导入:只有真正走 live 时才加载 QuantDinger 相关代码
+        from qsf.data.quantdinger import QuantDingerDataProvider
+
+        return QuantDingerDataProvider(config)
+    return MockDataProvider(config)

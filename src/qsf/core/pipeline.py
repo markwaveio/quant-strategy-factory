@@ -25,7 +25,7 @@ from qsf.core.schema import (
     StrategyProposal,
     Verdict,
 )
-from qsf.data.provider import DataProvider, MockDataProvider
+from qsf.data.provider import DataProvider, build_data_provider
 from qsf.decision.decider import Decider
 from qsf.evaluation.committee import EvaluationBoard
 from qsf.insight.engine import InsightEngine
@@ -65,7 +65,7 @@ class Pipeline:
         reviewer: Reviewer | None = None,
     ) -> None:
         self.config = config
-        self.data_provider = data_provider or MockDataProvider(config.data)
+        self.data_provider = data_provider or build_data_provider(config.data)
         self.insight_engine = insight_engine or InsightEngine()
         self.strategy_generator = strategy_generator or StrategyGenerator()
         self.evaluation_board = evaluation_board or EvaluationBoard(config.evaluation)
