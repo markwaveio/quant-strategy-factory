@@ -35,7 +35,7 @@ pytest
 |---|---|---|---|
 | ① | **数据层** | 采集 → 标准化 → 特征提取 → `MarketSnapshot` | [data/](src/qsf/data/):mock 采集器(行情/新闻/财报)、清洗、特征(年化波动率、动量、趋势强度、情绪、**黑天鹅强度**) |
 | ② | **洞察层** | `MarketSnapshot` → `Insight[]` | [insight/engine.py](src/qsf/insight/engine.py):异常(z-score)、走强/走弱、结构切换(波动率抬升)、事件驱动(黑天鹅/极端情绪) |
-| ③ | **策略生成层** | 洞察 → `StrategyProposal[]` | [strategy/](src/qsf/strategy/):趋势(双均线)、均值回归(布林/z-score)、新闻事件三族 |
+| ③ | **策略生成层** | 洞察 → `StrategyProposal[]` | [strategy/](src/qsf/strategy/):趋势(双均线)、均值回归(布林/z-score)、新闻事件三族。**参数应来自搜索而非人工指定** — 见 [strategy-factory skill](.claude/skills/strategy-factory/SKILL.md) |
 | ④ | **评估层(AI 挑战)** | 提案+回测 → `EvaluationResult` | [evaluation/](src/qsf/evaluation/):**质疑者**(过拟合/拍脑袋参数)、**风险官**(最坏亏多少,一票否决)、**综合评估官**(投委会裁决) |
 | ⑤ | **记忆层** | 结果 → `MemoryRecord` (JSONL) | [memory/store.py](src/qsf/memory/store.py):哪些策略成功过/失败过 + 一句教训,可检索 |
 | ⑥ | **回测层** | 提案+行情 → `BacktestMetrics` | [backtest/](src/qsf/backtest/):向量化引擎,计手续费+滑点,产出复利收益/最大回撤/夏普/胜率 |
@@ -123,7 +123,8 @@ qsf run --config configs/quantdinger.yaml --report reports/live.md
 | [docs/quantdinger-vs-factory.md](docs/quantdinger-vs-factory.md) | **重叠与互补地图** — 本工厂 8 层 vs QuantDinger 逐层对照,哪些该交给它、哪一处是我们的差异化 |
 | [.claude/skills/market-insight/](.claude/skills/market-insight/SKILL.md) | **市场洞察** — ①②层:单标的采集与洞察 |
 | [.claude/skills/daily-scan/](.claude/skills/daily-scan/SKILL.md) | **每日扫描** — ①②层:无需指定标的,三层池+漏斗+变化检测 |
-| [.claude/skills/strategy-review/](.claude/skills/strategy-review/SKILL.md) | **策略评审** — ③⑥④⑦层:生成策略→QuantDinger回测→三角色对抗→决策 |
+| [.claude/skills/strategy-factory/](.claude/skills/strategy-factory/SKILL.md) | **策略生产** — ③层:参数空间搜索+多标的稳健性筛选+OOS验证→策略卡 |
+| [.claude/skills/strategy-review/](.claude/skills/strategy-review/SKILL.md) | **策略评审** — ⑥④⑦层:回测→三角色对抗→决策 |
 
 ## 目录结构
 
