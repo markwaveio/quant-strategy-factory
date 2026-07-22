@@ -44,6 +44,25 @@ pytest
 
 所有层只通过 [core/schema.py](src/qsf/core/schema.py) 定义的**数据契约**通信,层与层解耦——想替换某一层(如 mock 数据换真实源),只需换实现,上层无感。编排见 [core/pipeline.py](src/qsf/core/pipeline.py)。
 
+## 数据采集的三种实现(不是三层)
+
+①数据层是**一个协议、多种实现**,不需要为"agent 采集"新增层级:
+
+```text
+①数据层 (DataProvider 协议)
+├── MockDataProvider          离线可复现,开发/教学用
+├── QuantDingerDataProvider   Python 调 REST,程序化跑
+└── market-insight skill      agent 实现,对话式跑  ← .claude/skills/
+        ↓ 三者产出同样的 MarketSnapshot + Insight
+②洞察层 → ③策略 → ④评估 → ⑥回测 → ⑦决策 → ⑧复盘
+```
+
+[**market-insight skill**](.claude/skills/market-insight/SKILL.md) 让 AI agent 直接完成「拉行情+财报 → 算特征 → 出洞察」,输出**严格对齐本工厂的 schema**,可直接喂给下游。
+
+它的算法口径与 [features/extract.py](src/qsf/data/features/extract.py) 一致、阈值与 [insight/engine.py](src/qsf/insight/engine.py) 一致,保证**对话模式与代码模式产出可比**。改阈值时两边要同步。
+
+> 为什么需要它:QuantDinger 的 Agent Gateway **只开放行情**(`get_klines`/`get_price`),不暴露新闻与财报端点。这部分靠 agent 的搜索与判断力补齐——而且新闻解读本就是判断题,LLM 强于关键词规则。
+
 ## 评估层:AI 如何"挑战"策略
 
 这是本项目的核心思路——**不让单一模型自说自话,而是让多个角色互相制衡**:
