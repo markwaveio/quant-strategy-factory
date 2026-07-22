@@ -30,26 +30,23 @@ import argparse
 import sys
 
 # --------------------------------------------------------------------------- #
-# ⚠️ 下单 API —— 唯一待确认的部分
+# 下单 API(实测自用户的富途策略)
 #
-# 从可视化卡片看到的语义是:
-#   买: 「下单 驱动标的1 的 限价单 以 指定价(K线收盘价) 买 <数量> 当日有效」
-#   卖: 「下单 驱动标的1 的 限价单 以 指定价(K线收盘价) 卖 100% 持仓可卖 当日有效」
+#   place_limit(symbol=, price=, qty=, side=OrderSide.SELL|BUY,
+#               time_in_force=TimeInForce.DAY,
+#               order_trade_session_type=TSType.RTH)
+#   max_qty_to_sell(symbol=)   最大可卖数量
+#   lot_size(symbol=)          每手股数
+#   bid(symbol=, level=N)      买盘第 N 档   —— 卖出时用(打买盘,确保成交)
+#   ask(symbol=, level=N)      卖盘第 N 档   —— 买入时用(打卖盘)
 #
-# 把富途「双均线策略」里下单卡片对应的那一行代码填到下面两个常量里即可。
-# 在拿到确切写法前,这里用占位符,生成的代码会在下单处明确标注 TODO。
+# ✅ 卖出路径 100% 实测确认。
+# ⚠️ 买入路径中的 ask() / max_qty_to_buy() 是按对称性推断的:
+#    卖出打 bid(买盘)、买入自然打 ask(卖盘)。若富途函数名不同,
+#    编辑器底部会立刻报错(它有语法校验),按提示改这两个名字即可。
+#
+# 安全模式(取自用户代码):下单前先校验可交易数量 >= 一手。
 # --------------------------------------------------------------------------- #
-
-BUY_CALL = (
-    "# TODO: 替换成富途的下单 API(见卡片「下单买入」对应代码)\n"
-    "        # 语义: 限价单, 指定价=K线收盘价, 买入 self.开仓数量, 当日有效\n"
-    "        pass"
-)
-SELL_CALL = (
-    "# TODO: 替换成富途的下单 API(见卡片「下单卖出持仓可卖」对应代码)\n"
-    "        # 语义: 限价单, 指定价=K线收盘价, 卖出 100% 持仓可卖, 当日有效\n"
-    "        pass"
-)
 
 TEMPLATE = '''# ============================================================
 # {title}
@@ -117,10 +114,38 @@ class Strategy(StrategyBase):
         """
         if self._持仓为空():
             if self._快线在上():
-                {buy}
+                self._买入()
         else:
             if self._快线在下():
-                {sell}
+                self._卖出()
+
+    # --- 下单 ----------------------------------------------------------- #
+
+    def _买入(self):
+        """限价买入。打卖盘第 5 档以确保成交;数量按整手取。"""
+        每手 = lot_size(symbol=self.驱动标的1)
+        数量 = int(self.开仓数量) * 每手
+        if 数量 < 每手:
+            print("买入数量不足一手, 跳过")
+            return
+        价格 = ask(symbol=self.驱动标的1, level=5)
+        place_limit(symbol=self.驱动标的1, price=价格, qty=数量,
+                    side=OrderSide.BUY, time_in_force=TimeInForce.DAY,
+                    order_trade_session_type=TSType.RTH)
+        print("买入 {{}} 股 @ {{}}".format(数量, 价格))
+
+    def _卖出(self):
+        """限价清仓。打买盘第 5 档以确保成交。"""
+        可卖 = max_qty_to_sell(symbol=self.驱动标的1)
+        每手 = lot_size(symbol=self.驱动标的1)
+        if 可卖 < 每手:
+            print("可卖数量不足一手, 跳过")
+            return
+        价格 = bid(symbol=self.驱动标的1, level=5)
+        place_limit(symbol=self.驱动标的1, price=价格, qty=1.00 * 可卖,
+                    side=OrderSide.SELL, time_in_force=TimeInForce.DAY,
+                    order_trade_session_type=TSType.RTH)
+        print("清仓 {{}} 股 @ {{}}".format(可卖, 价格))
 '''
 
 
@@ -129,7 +154,6 @@ def render(fast: int, slow: int, qty: int, title: str, pool: str,
     return TEMPLATE.format(
         title=title, fast=fast, slow=slow, qty=qty, pool=pool, space=space,
         source=source, verdict=verdict, verdict_note=verdict_note,
-        buy=BUY_CALL, sell=SELL_CALL,
     )
 
 
@@ -137,10 +161,10 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="导出富途策略编辑器代码")
     p.add_argument("--fast", type=int, default=8, help="快线周期(默认取自搜索结果)")
     p.add_argument("--slow", type=int, default=40, help="慢线周期")
-    p.add_argument("--qty", type=int, default=100, help="开仓数量(股)")
+    p.add_argument("--qty", type=int, default=1, help="开仓手数")
     p.add_argument("--title", default="港股科技趋势跟随 v1")
     p.add_argument("--pool", default="00700 / 09988 / 03690 / 01810")
-    p.add_argument("--space", default="fast[5,8,10,15] × slow[20,30,40,60] = 16组 × 4标的")
+    p.add_argument("--space", default="fast[5,8,10,15] x slow[20,30,40,60] = 16组 x 4标的")
     p.add_argument("--source", default="策略卡 strategy-card-hk-tech-trend-v1")
     p.add_argument("--verdict", default="REJECT (评分 0.337)")
     p.add_argument(
@@ -164,10 +188,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"✅ 已写入 {a.output}", file=sys.stderr)
     else:
         print(code)
-
-    if "TODO" in code:
-        print("\n⚠️  下单 API 尚未填入 —— 见本脚本顶部 BUY_CALL / SELL_CALL 常量。",
-              file=sys.stderr)
     return 0
 
 
