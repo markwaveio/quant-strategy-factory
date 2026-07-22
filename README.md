@@ -115,6 +115,14 @@ qsf run --config configs/quantdinger.yaml --report reports/live.md
 
 数据层按 [`DataProvider`](src/qsf/data/provider.py) 协议解耦——照 QuantDinger 的写法(client + 满足 [collectors/base.py](src/qsf/data/collectors/base.py) 协议的采集器 + provider),再在 `build_data_provider()` 里加一个 `mode` 分支即可。`pip install -e ".[data]"` 备有 akshare / yfinance / feedparser。
 
+## 文档
+
+| 文档 | 内容 |
+|---|---|
+| [docs/quantdinger-setup.md](docs/quantdinger-setup.md) | **接入教程** — 从部署 QuantDinger 到 Codex/Claude Code 接入,含排错表与验收清单(全部命令已实测) |
+| [docs/quantdinger-vs-factory.md](docs/quantdinger-vs-factory.md) | **重叠与互补地图** — 本工厂 8 层 vs QuantDinger 逐层对照,哪些该交给它、哪一处是我们的差异化 |
+| [.claude/skills/market-insight/](.claude/skills/market-insight/SKILL.md) | **市场洞察 skill** — 数据采集与洞察的 agent 实现 |
+
 ## 目录结构
 
 ```
