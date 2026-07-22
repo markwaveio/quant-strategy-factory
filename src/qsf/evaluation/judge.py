@@ -93,9 +93,17 @@ class MockLLMJudge(LLMJudge):
         m = ctx.metrics
 
         # 交易次数太少 → 统计不显著,可能过拟合
-        if m.n_trades < 5:
+        # 门槛设 10:实测中一个 5 笔交易、0% 胜率的失败策略曾被判 APPROVE
+        # (旧门槛 `< 5` 对 n_trades==5 不成立),5 笔显然不足以支撑任何结论。
+        if m.n_trades < 10:
             concerns.append(f"交易样本仅 {m.n_trades} 笔,统计不显著,疑似过拟合")
             suggestions.append("延长回测区间或放宽入场条件以获得更多样本")
+        # 胜率极低 → 策略逻辑本身可能就是错的,不只是参数问题
+        if m.n_trades > 0 and m.win_rate == 0.0:
+            concerns.append(f"{m.n_trades} 笔交易胜率为 0,策略逻辑在该标的上完全失效")
+            suggestions.append("先检验策略假设是否适用于该标的,而非调参")
+        elif m.n_trades >= 10 and m.win_rate < 0.3:
+            concerns.append(f"胜率仅 {m.win_rate:.0%},盈亏比需足够高才可能成立")
         # 夏普高得不真实
         if m.sharpe > 3.0:
             concerns.append(f"夏普 {m.sharpe:.2f} 偏高,警惕曲线拟合")
