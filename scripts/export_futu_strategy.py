@@ -18,6 +18,10 @@
        data_type=DataType.CLOSE, select=2,
        session_type=THType.RTH)               均线
 
+    ⚠️ 四个【约定函数】缺一不可,即使函数体为空:
+        initialize / trigger_symbols / custom_indicator / global_variables
+        少写 custom_indicator 会报「缺少 custom_indicator() 约定函数」。(实测踩过)
+
     ⚠️ 富途的模式是「持仓状态 + 当前形态」,不是边缘触发:
         持仓==0 且 快线>慢线 → 买入
         持仓>0  且 快线<慢线 → 卖出
@@ -65,6 +69,7 @@ class Strategy(StrategyBase):
     def initialize(self):
         declare_strategy_type(AlgoStrategyType.SECURITY)
         self.trigger_symbols()
+        self.custom_indicator()
         self.global_variables()
         print("{title} 初始化完成 | 快线={{}} 慢线={{}}".format(
             self.均线快线周期, self.均线慢线周期))
@@ -72,6 +77,13 @@ class Strategy(StrategyBase):
     def trigger_symbols(self):
         """定义驱动标的:回测时在运行设置里选具体股票。"""
         self.驱动标的1 = declare_trig_symbol()
+
+    def custom_indicator(self):
+        """约定函数 —— 必须存在,否则编辑器报「缺少 custom_indicator() 约定函数」。
+
+        本策略直接用内置 ma() 计算均线,无需注册自定义指标,故留空。
+        """
+        pass
 
     def global_variables(self):
         """可在界面上调节的参数。默认值来自工厂的网格搜索结果。"""

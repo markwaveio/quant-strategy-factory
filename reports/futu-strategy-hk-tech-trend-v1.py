@@ -16,6 +16,7 @@ class Strategy(StrategyBase):
     def initialize(self):
         declare_strategy_type(AlgoStrategyType.SECURITY)
         self.trigger_symbols()
+        self.custom_indicator()
         self.global_variables()
         print("港股科技趋势跟随 v1 初始化完成 | 快线={} 慢线={}".format(
             self.均线快线周期, self.均线慢线周期))
@@ -23,6 +24,13 @@ class Strategy(StrategyBase):
     def trigger_symbols(self):
         """定义驱动标的:回测时在运行设置里选具体股票。"""
         self.驱动标的1 = declare_trig_symbol()
+
+    def custom_indicator(self):
+        """约定函数 —— 必须存在,否则编辑器报「缺少 custom_indicator() 约定函数」。
+
+        本策略直接用内置 ma() 计算均线,无需注册自定义指标,故留空。
+        """
+        pass
 
     def global_variables(self):
         """可在界面上调节的参数。默认值来自工厂的网格搜索结果。"""
