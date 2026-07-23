@@ -1,0 +1,8 @@
+SKILLS_DIR=auto
+WORKSPACE_DIR=~/quant-strategy-factory-workspace
+PYTHON_BIN=python3
+INSTALL_OPEND=false
+RUN_TESTS=true
+RUN_SMOKE=true
+DEFAULT_CONFIG=configs/default.yaml
+OPEND_CONFIG=configs/opend-hk.yaml

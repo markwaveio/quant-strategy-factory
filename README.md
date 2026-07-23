@@ -32,6 +32,24 @@ python examples/run_pipeline.py
 pytest
 ```
 
+## 给学员的一键部署
+
+推荐把仓库发给学员后,让他的 agent 先读安装引导 skill:
+
+```text
+请阅读 skills/qsf-student-installer/SKILL.md,帮我安装部署这套量化策略工厂。
+```
+
+也可以手动运行:
+
+```bash
+git clone https://github.com/markwaveio/quant-strategy-factory.git
+cd quant-strategy-factory
+bash scripts/install.sh
+```
+
+安装脚本会创建 `.venv`、安装依赖、安装本仓库的 agent skills、跑测试,并生成一组离线 smoke 报告到 `~/quant-strategy-factory-workspace/reports/`。
+
 ## 八层设计
 
 | # | 层 | 输入 → 输出 | 关键实现 |

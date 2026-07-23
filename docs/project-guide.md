@@ -99,6 +99,22 @@ qsf run --config configs/default.yaml --report reports/latest.md
 
 ## 日常使用路径
 
+### 0. 学员一键部署
+
+让学员 clone 仓库后对自己的 agent 说:
+
+```text
+请阅读 skills/qsf-student-installer/SKILL.md,帮我安装部署这套量化策略工厂。
+```
+
+或者手动执行:
+
+```bash
+bash scripts/install.sh
+```
+
+脚本会创建 `.venv`、安装依赖、安装 agent skills、运行测试,并生成离线 smoke 报告。
+
 ### 1. 离线跑通
 
 ```bash
@@ -195,4 +211,3 @@ python scripts/export_futu_strategy.py --fast 8 --slow 40 -o reports/futu-strate
 - 富途 OpenD 主要负责数据和交易通道,不是公开的策略回测任务 API。
 - 富途策略编辑器回测适合作为外部复验,当前更偏半自动。
 - 任何进入实盘前的策略,都应先经过外部回测、模拟交易、小资金验证和人工风控确认。
-
