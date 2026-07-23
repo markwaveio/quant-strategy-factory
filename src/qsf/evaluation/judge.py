@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import json
+import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -178,6 +179,51 @@ class MockLLMJudge(LLMJudge):
             if not ev.universe_selection:
                 concerns.append("未记录标的池的选取方式,无法判断是否引入前视偏差")
 
+        # ── 第三关:跑得赢"什么都不做"吗 ────────────────────────
+        # 分不清 alpha 和 beta 是最容易犯的错。实测 09999 策略赚 21.7%
+        # 看着不错,同期买入持有赚 25.6% —— 策略承担了择时风险、付了 48 笔
+        # 交易成本,结果还不如躺着不动,却拿到评分 1.0 三角色全票通过。
+        excess = m.excess_return
+        if excess is not None:
+            if excess <= 0:
+                concerns.append(
+                    f"跑输买入持有:策略 {m.total_return:.1%} vs 基准 "
+                    f"{m.benchmark_return:.1%}(超额 {excess:+.1%}),"
+                    "承担择时风险还不如躺着不动"
+                )
+                suggestions.append("先证明能跑赢买入持有,否则这个策略没有存在意义")
+            elif m.sharpe < m.benchmark_sharpe:
+                concerns.append(
+                    f"超额收益 {excess:+.1%} 但风险调整后更差"
+                    f"(夏普 {m.sharpe:.2f} < 基准 {m.benchmark_sharpe:.2f})"
+                )
+
+        # ── 第四关:样本外还成立吗 ──────────────────────────────
+        # 最决定性的一关。实测 09618 全样本超额 +49%,拆开看:
+        # 训练段 +70.8%、检验段 -29.2% —— 全部超额都在样本内,
+        # 样本外一分没赚而躺着不动赚 28.5%。不拆就看不出来。
+        oe = m.oos_excess
+        if oe is not None and oe <= 0:
+            concerns.append(
+                f"样本外跑输基准:后30%区间策略 {m.oos_return:.1%} vs "
+                f"基准 {m.oos_benchmark_return:.1%}(超额 {oe:+.1%})"
+                " —— 全样本的优势只存在于样本内"
+            )
+            suggestions.append("边缘不能延续到样本外,不要上线;先查是否只在特定市况有效")
+
+        # ── 第五关:是从多少个里挑出来的 ────────────────────────
+        # 挑 55 个候选里的第一名必然乐观,与因子研究的多重检验同源。
+        # 但这【不能】算作阻断性 concern:它对每个候选都成立,
+        # 一旦计入 concerns,只要提案数 ≥10 就永远不会有策略通过 ——
+        # 那是把关口焊死,不是提高门槛。改为压低信心 + 给出复现建议。
+        selection_penalty = 0.0
+        if m.n_candidates >= 10:
+            selection_penalty = min(0.3, 0.05 * math.log10(m.n_candidates) * 4)
+            suggestions.append(
+                f"该策略是从 {m.n_candidates} 个候选中选出的最优,"
+                "挑最大值必然高估 —— 上线前需在独立样本上复现"
+            )
+
         # 交易次数太少 → 统计不显著,可能过拟合
         # 门槛设 10:实测中一个 5 笔交易、0% 胜率的失败策略曾被判 APPROVE
         # (旧门槛 `< 5` 对 n_trades==5 不成立),5 笔显然不足以支撑任何结论。
@@ -200,8 +246,13 @@ class MockLLMJudge(LLMJudge):
 
         # 数据不可信 = 一票否决。这类问题不是"改改参数"能解决的,
         # 在错的数据上调参只会得到更精致的错误。
-        blocked = (ctx.data_quality is not None and not ctx.data_quality.ok) or (
-            ctx.evidence is not None and not ctx.evidence.verdict_ok
+        blocked = (
+            (ctx.data_quality is not None and not ctx.data_quality.ok)
+            or (ctx.evidence is not None and not ctx.evidence.verdict_ok)
+            # 跑输基准同样是一票否决 —— 这不是"再调调参"的问题
+            or (excess is not None and excess <= 0)
+            # 样本外跑输 = 边缘不存在,同样一票否决
+            or (oe is not None and oe <= 0)
         )
         if blocked:
             verdict = Verdict.REJECT
@@ -209,6 +260,7 @@ class MockLLMJudge(LLMJudge):
         else:
             verdict = Verdict.APPROVE if not concerns else Verdict.REVISE
             confidence = 0.8 if not concerns else max(0.4, 0.8 - 0.1 * len(concerns))
+            confidence = round(max(0.3, confidence - selection_penalty), 2)
         return ReviewOpinion(
             role=ReviewRole.SKEPTIC,
             strategy_id=ctx.proposal.id,

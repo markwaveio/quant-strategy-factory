@@ -102,6 +102,10 @@ class MarketSnapshot(BaseModel):
     news: list[NewsItem] = Field(default_factory=list)
     reports: dict[str, FinancialReport] = Field(default_factory=dict)  # symbol -> report
     features: dict[str, FeatureSet] = Field(default_factory=dict)      # symbol -> features
+    # 数据体检报告随快照一路流到评估层 —— 否则质疑者拿不到,新加的
+    # 数据审查就是空转(实测:接进 provider 后流水线里依然没人传它)。
+    # 前向引用:DataQualityReport 定义在文件末尾的第 9 节。
+    quality: DataQualityReport | None = None
 
     @property
     def symbols(self) -> list[str]:
@@ -214,6 +218,34 @@ class BacktestMetrics(BaseModel):
     win_rate: float
     n_trades: int
     equity_curve: list[float] = Field(default_factory=list)
+    # 同期买入持有基准 —— **没有它就分不清 alpha 和 beta**。
+    # 实测:09999 策略赚 21.7% 看着不错,同期买入持有赚 25.6%,
+    # 策略其实跑输"什么都不做",却拿到评分 1.0 三角色全票通过。
+    # None = 未计算(如空回测),不是"基准为零" —— 两者必须可区分,
+    # 否则一个亏钱但没算基准的策略会被误报成"跑输买入持有"。
+    benchmark_return: float | None = None
+    benchmark_sharpe: float | None = None
+
+    # 样本外(后 30%)表现 —— **最决定性的一关**。
+    # 实测 09618:训练段超额 +70.8%,检验段 -29.2%。全部超额都在样本内,
+    # 样本外一分没赚而躺着不动赚 28.5%。只看全样本会把它当成好策略。
+    oos_return: float | None = None
+    oos_benchmark_return: float | None = None
+    oos_sharpe: float | None = None
+    # 该策略是从多少个候选里选出来的 —— 挑最大值必然乐观
+    n_candidates: int = 1
+
+    @property
+    def excess_return(self) -> float | None:
+        if self.benchmark_return is None:
+            return None
+        return round(self.total_return - self.benchmark_return, 4)
+
+    @property
+    def oos_excess(self) -> float | None:
+        if self.oos_return is None or self.oos_benchmark_return is None:
+            return None
+        return round(self.oos_return - self.oos_benchmark_return, 4)
     # 最终目标仓位:>0 多头 / <0 空头 / 0 空仓。
     # 决策层据此推导买卖方向 —— 不能只看策略族,因为同一族既可能做多也可能做空。
     final_position: float = 0.0

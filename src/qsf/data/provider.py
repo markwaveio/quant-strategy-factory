@@ -86,7 +86,7 @@ def build_data_provider(config: DataConfig) -> DataProvider:
         # 富途 OpenD —— 统一数据底座(20年历史 + PE + 换手率,与执行场所同源)
         from qsf.data.opend import OpenDDataProvider
 
-        return OpenDDataProvider(config)
+        return OpenDDataProvider(config, market=config.market)
     if mode in ("live", "quantdinger", "qd"):
         # 延迟导入:只有真正走 live 时才加载 QuantDinger 相关代码
         from qsf.data.quantdinger import QuantDingerDataProvider

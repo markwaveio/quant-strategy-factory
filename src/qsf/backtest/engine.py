@@ -81,6 +81,30 @@ class BacktestEngine:
         # 交易分段统计胜率:持仓从 0 变非 0 视为开仓,回到 0 视为平仓
         trade_returns = self._segment_trade_returns(position, port_ret)
 
+        # 买入持有基准 —— 满仓不动,同区间、同标的、扣一次开仓成本。
+        # 策略跑不赢它就没有存在意义:承担同样的风险却少赚钱。
+        bench_ret = asset_ret.copy()
+        bench_ret[1] -= cost_rate if len(bench_ret) > 1 else 0.0
+        bench_total = float(np.prod(1.0 + bench_ret) - 1.0)
+        bsd = float(np.std(bench_ret[1:], ddof=1)) if len(bench_ret) > 2 else 0.0
+        bench_sharpe = (
+            float((np.mean(bench_ret[1:]) - self.config.risk_free_rate / 252)
+                  / bsd * np.sqrt(252)) if bsd else 0.0
+        )
+
+        # 样本外分割:后 30% 完全不参与任何判断,只用来验证边缘是否延续。
+        # 这是最便宜也最狠的证伪 —— 均值回归在震荡段亮眼、转单边就失效,
+        # 只有分割才看得出来。
+        k = int(len(port_ret) * 0.7)
+        oos_r = oos_b = oos_s = None
+        if len(port_ret) - k >= 20:
+            op, ob = port_ret[k:], asset_ret[k:]
+            oos_r = float(np.prod(1.0 + op) - 1.0)
+            oos_b = float(np.prod(1.0 + ob) - 1.0)
+            osd = float(np.std(op, ddof=1))
+            oos_s = float((np.mean(op) - self.config.risk_free_rate / 252)
+                          / osd * np.sqrt(252)) if osd else 0.0
+
         return BacktestMetrics(
             strategy_id=proposal.id,
             total_return=round(total_return(equity), 4),
@@ -92,6 +116,11 @@ class BacktestEngine:
             equity_curve=[round(float(x), 2) for x in equity],
             # 最后一根 bar 的目标仓位 = 该策略"此刻"的方向,供决策层判断买/卖
             final_position=round(float(target[-1]), 4) if len(target) else 0.0,
+            benchmark_return=round(bench_total, 4),
+            benchmark_sharpe=round(bench_sharpe, 4),
+            oos_return=round(oos_r, 4) if oos_r is not None else None,
+            oos_benchmark_return=round(oos_b, 4) if oos_b is not None else None,
+            oos_sharpe=round(oos_s, 4) if oos_s is not None else None,
         )
 
     @staticmethod

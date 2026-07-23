@@ -90,6 +90,7 @@ class EvaluationBoard:
             market_features=market_features,
             similar_failures=similar_failures,
             max_drawdown_limit=self.config.max_drawdown_limit,
+            data_quality=snapshot.quality,
         )
 
     def _aggregate(self, opinions: list[ReviewOpinion]) -> Verdict:

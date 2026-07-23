@@ -247,3 +247,58 @@ def test_skeptic_unchanged_when_no_evidence_supplied():
     """向后兼容:不给证据时行为与之前一致(只审策略),不能凭空 REJECT。"""
     op = MockLLMJudge().review(ReviewRole.SKEPTIC, _ctx())
     assert op.verdict == Verdict.APPROVE
+
+
+# --------------------------------------------------------------------------- #
+# 基准比较 —— 分不清 alpha 和 beta 是最容易犯的错                                #
+# --------------------------------------------------------------------------- #
+
+def _m(total: float, bench: float | None, **kw) -> BacktestMetrics:
+    base = dict(strategy_id="s1", total_return=total, annual_return=total,
+                max_drawdown=-0.1, sharpe=1.0, win_rate=0.7, n_trades=48,
+                benchmark_return=bench, benchmark_sharpe=1.0)
+    base.update(kw)
+    return BacktestMetrics(**base)
+
+
+def test_skeptic_rejects_strategy_losing_to_buy_and_hold():
+    """真实案例:09999 策略 +21.7%,同期买入持有 +25.6%,却全票通过评分 1.0。"""
+    op = MockLLMJudge().review(ReviewRole.SKEPTIC, _ctx(metrics=_m(0.217, 0.256)))
+    assert op.verdict == Verdict.REJECT
+    assert any("跑输买入持有" in c for c in op.concerns), op.concerns
+
+
+def test_skeptic_approves_strategy_beating_benchmark():
+    """09618:策略 +43.5%,买入持有 -5.4% —— 这才是真超额。"""
+    op = MockLLMJudge().review(
+        ReviewRole.SKEPTIC, _ctx(metrics=_m(0.435, -0.054, sharpe=1.19, benchmark_sharpe=0.04)))
+    assert op.verdict == Verdict.APPROVE
+
+
+def test_skeptic_flags_worse_risk_adjusted_despite_excess():
+    """超额为正但夏普更差 —— 多赚的钱是靠多担风险换的。"""
+    op = MockLLMJudge().review(
+        ReviewRole.SKEPTIC, _ctx(metrics=_m(0.30, 0.25, sharpe=0.5, benchmark_sharpe=1.2)))
+    assert any("风险调整后更差" in c for c in op.concerns)
+
+
+def test_benchmark_absent_does_not_trigger_false_rejection():
+    """没算基准时不能凭空判「跑输」—— None 与 0.0 必须可区分。"""
+    op = MockLLMJudge().review(ReviewRole.SKEPTIC, _ctx(metrics=_m(-0.15, None)))
+    assert not any("跑输买入持有" in c for c in op.concerns)
+
+
+def test_skeptic_rejects_when_edge_vanishes_out_of_sample():
+    """真实案例 09618:全样本超额 +49%,拆开看训练 +70.8% / 检验 -29.2%。"""
+    m = _m(0.435, -0.055, oos_return=-0.006, oos_benchmark_return=0.285)
+    op = MockLLMJudge().review(ReviewRole.SKEPTIC, _ctx(metrics=m))
+    assert op.verdict == Verdict.REJECT
+    assert any("样本外跑输基准" in c for c in op.concerns), op.concerns
+
+
+def test_skeptic_warns_about_selection_from_many_candidates():
+    m = _m(0.435, -0.055, oos_return=0.2, oos_benchmark_return=0.05, n_candidates=55)
+    op = MockLLMJudge().review(ReviewRole.SKEPTIC, _ctx(metrics=m))
+    # 是建议而非阻断性 concern —— 否则提案数 ≥10 时没有策略能通过
+    assert any("55 个候选" in s for s in op.suggestions), op.suggestions
+    assert op.verdict == Verdict.APPROVE and op.confidence < 0.8

@@ -14,8 +14,9 @@ from pydantic import BaseModel, Field
 
 
 class DataConfig(BaseModel):
-    mode: str = "mock"                       # mock | live
+    mode: str = "mock"                       # mock | opend | live
     symbols: list[str] = Field(default_factory=lambda: ["DEMO.A", "DEMO.B", "DEMO.C"])
+    market: str = "HKStock"                  # opend 模式下的市场:HKStock|USStock|CNStock
     lookback_days: int = 250
     seed: int = 42                           # mock 数据的随机种子,保证可复现
 

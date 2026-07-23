@@ -101,8 +101,11 @@ class Pipeline:
 
         # 4~6. 逐个策略:AI 评审 + 回测(评审用到回测结果,回测先行)
         past_memory = self.memory_store.all()
+        n_cand = len(result.proposals)
         for proposal in result.proposals:
             metrics = self.backtest_engine.run(proposal, snapshot)
+            # 让评审知道这是从多少个候选里挑的 —— 挑最大值必然乐观
+            metrics.n_candidates = n_cand
             result.backtests[proposal.id] = metrics
 
             evaluation = self.evaluation_board.evaluate(

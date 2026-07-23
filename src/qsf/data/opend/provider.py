@@ -114,4 +114,4 @@ class OpenDDataProvider:
             features[sym] = feat
 
         return MarketSnapshot(as_of=as_of, prices=prices, news=[],
-                              reports={}, features=features)
+                              reports={}, features=features, quality=self.quality)
