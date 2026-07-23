@@ -138,7 +138,7 @@ PYTHONPATH=src python -m qsf.cli run
 | `research-smoke.md` | 每个候选策略的证据、风险和下一步 |
 | `strategies-smoke.json` | 给外部回测或模拟交易系统读取的候选策略 JSON |
 
-强调:这些是研究产物,不是实盘指令。
+强调:Markdown 策略卡/研究证据包是研究产物,不是富途策略编辑器代码,也不是实盘指令。
 
 ## 第 8 步:运行默认 OpenD 真实数据研究
 
@@ -153,6 +153,15 @@ PYTHONPATH=src python -m qsf.cli run \
   --report reports/run-opend-hk.md \
   --research-report reports/research-opend-hk.md \
   --strategies reports/strategies-opend-hk.json
+```
+
+如需生成富途策略编辑器可粘贴代码,继续运行:
+
+```bash
+python scripts/export_futu_strategy.py \
+  --from-strategies reports/strategies-opend-hk.json \
+  --output-dir reports/futu \
+  --approved-only
 ```
 
 提醒学生 OpenD 有历史 K 线额度限制,不要随便扩大标的池。

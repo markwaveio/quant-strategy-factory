@@ -31,7 +31,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+from pathlib import Path
 
 # --------------------------------------------------------------------------- #
 # 下单 API(实测自用户的富途策略)
@@ -169,8 +171,73 @@ def render(fast: int, slow: int, qty: int, title: str, pool: str,
     )
 
 
+def _safe_name(value: str) -> str:
+    return "".join(c if c.isalnum() or c in ("-", "_") else "-" for c in value).strip("-")
+
+
+def _export_from_strategies(path: str, output_dir: str, qty: int, approved_only: bool) -> int:
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    strategies = payload.get("strategies", [])
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    written = 0
+    skipped: list[str] = []
+    for item in strategies:
+        sid = str(item.get("strategy_id", "strategy"))
+        family = item.get("family")
+        status = item.get("status")
+        params = item.get("params") or {}
+        if approved_only and status != "promote_to_sim":
+            skipped.append(f"{sid}:status={status}")
+            continue
+        if family != "trend" or "fast" not in params or "slow" not in params:
+            skipped.append(f"{sid}:unsupported")
+            continue
+
+        symbol = str(item.get("symbol", "UNKNOWN"))
+        fast = int(params["fast"])
+        slow = int(params["slow"])
+        if fast >= slow:
+            skipped.append(f"{sid}:invalid-fast-slow")
+            continue
+        title = f"{symbol} 趋势跟随 fast{fast}/slow{slow}"
+        verdict = f"{item.get('final_verdict', '-')}/{status or '-'}"
+        warnings = item.get("warnings") or []
+        note = warnings[0] if warnings else str(item.get("next_step", "用于富途回测交叉验证"))
+        code = render(
+            fast=fast,
+            slow=slow,
+            qty=qty,
+            title=title,
+            pool=symbol,
+            space="来自 strategies JSON 的已筛选参数",
+            source=f"策略候选 {sid}",
+            verdict=verdict,
+            verdict_note=f"{note}\n#    本文件仅用于富途策略编辑器回测/模拟验证,不是实盘授权。",
+        )
+        target = out / f"futu-{_safe_name(symbol)}-trend-fast{fast}-slow{slow}.py"
+        target.write_text(code, encoding="utf-8")
+        written += 1
+
+    if skipped:
+        print(f"⚠️ 跳过 {len(skipped)} 个候选:{'; '.join(skipped[:8])}", file=sys.stderr)
+    if not written:
+        print(f"❌ 未导出富途策略文件:{out}", file=sys.stderr)
+        return 1
+    print(f"✅ 已导出 {written} 个富途策略文件到 {out}", file=sys.stderr)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="导出富途策略编辑器代码")
+    p.add_argument("--from-strategies", help="读取 qsf --strategies 导出的 JSON 并批量导出")
+    p.add_argument("--output-dir", default="reports/futu", help="批量导出目录")
+    p.add_argument(
+        "--approved-only",
+        action="store_true",
+        help="批量导出时只导出 promote_to_sim 候选",
+    )
     p.add_argument("--fast", type=int, default=8, help="快线周期(默认取自搜索结果)")
     p.add_argument("--slow", type=int, default=40, help="慢线周期")
     p.add_argument("--qty", type=int, default=1, help="开仓手数")
@@ -186,6 +253,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument("-o", "--output", help="写入文件(默认打印到 stdout)")
     a = p.parse_args(argv)
+
+    if a.from_strategies:
+        return _export_from_strategies(a.from_strategies, a.output_dir, a.qty, a.approved_only)
 
     if a.fast >= a.slow:
         print("❌ 快线周期必须小于慢线周期", file=sys.stderr)

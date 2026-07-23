@@ -22,6 +22,18 @@ qsf run
 # 用配置文件跑,并把 Markdown 报告落盘
 qsf run --config configs/default.yaml --report reports/latest.md
 
+# 同时导出研究证据包与策略候选 JSON
+qsf run --config configs/opend-hk.yaml \
+  --report reports/run-opend-hk.md \
+  --research-report reports/research-opend-hk.md \
+  --strategies reports/strategies-opend-hk.json
+
+# 把策略候选 JSON 转成富途策略编辑器可粘贴代码
+python scripts/export_futu_strategy.py \
+  --from-strategies reports/strategies-opend-hk.json \
+  --output-dir reports/futu \
+  --approved-only
+
 # 启用参数网格搜索(configs 里设 strategy.param_search: true)
 # 关闭时用的是【未经搜索】的基线默认值,其回测结论不能作为投资依据
 
@@ -156,7 +168,7 @@ qsf run --config configs/quantdinger.yaml --report reports/live.md
 
 | 文档 | 内容 |
 |---|---|
-| [docs/project-guide.md](docs/project-guide.md) | **项目导览** — 目录作用、主流程、日常运行路径、扩展入口 |
+| [docs/project-guide.md](docs/project-guide.md) | **项目导览** — 目录作用、主流程、日常运行路径、富途代码导出、扩展入口 |
 | [docs/quantdinger-setup.md](docs/quantdinger-setup.md) | **接入教程** — 从部署 QuantDinger 到 Codex/Claude Code 接入,含排错表与验收清单(全部命令已实测) |
 | [docs/factor-research-01.md](docs/factor-research-01.md) | **因子研究 01** — 价量因子 IC 检验:港股反转弱有效、美股低波反向;含两条方法论教训 |
 | [docs/three-engine-cross-validation.md](docs/three-engine-cross-validation.md) | **三引擎交叉验证** — 实证发现 `@strategy` 注解不生效、止损参数无万能值等缺陷 |

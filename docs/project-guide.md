@@ -84,6 +84,8 @@ qsf run --config configs/default.yaml --report reports/latest.md
 | 研究证据包 Markdown | `--research-report reports/research.md` | 记录每个候选策略为什么通过、观察或否决 |
 | 策略候选 JSON | `--strategies reports/strategies.json` | 供模拟交易、外部回测或自动化系统读取 |
 
+注意:策略卡和研究证据包是 Markdown 文档,不是富途策略编辑器代码。要贴进富途,先用策略候选 JSON 生成 `.py` 文件。
+
 ## 推荐阅读顺序
 
 第一次看项目,建议按这个顺序:
@@ -140,10 +142,19 @@ OpenD 是当前默认真实数据源,提供历史行情和部分基本面字段�
 ### 3. 把候选送去富途复验
 
 ```bash
-python scripts/export_futu_strategy.py --fast 8 --slow 40 -o reports/futu-strategy.py
+python scripts/export_futu_strategy.py \
+  --from-strategies reports/strategies-opend-hk.json \
+  --output-dir reports/futu \
+  --approved-only
 ```
 
-这一步是把某个候选策略转成富途策略编辑器可粘贴的代码。富途回测和模拟交易用于复验,不是替代 QSF 的研究流程。
+这一步是把候选策略 JSON 里的趋势策略转成富途策略编辑器可粘贴的代码。每个 `.py` 文件仍只用于富途回测或模拟验证,不是实盘授权。
+
+如果只想手动导出一组双均线参数:
+
+```bash
+python scripts/export_futu_strategy.py --fast 8 --slow 40 -o reports/futu-strategy.py
+```
 
 ### 4. 做专项因子研究
 
