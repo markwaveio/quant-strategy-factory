@@ -30,6 +30,7 @@ data_store/daily/*
 reports/
 !reports/strategy-card-*.md   # 示例策略卡:保留作为产出物范例
 !reports/futu-strategy-*.py   # 富途策略代码:保留作为产出物范例
+!reports/factor-ic-*.json     # 因子IC检验结果:保留作为研究记录
 *.report.json
 *.report.md
 

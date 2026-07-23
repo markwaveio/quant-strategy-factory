@@ -123,6 +123,7 @@ qsf run --config configs/quantdinger.yaml --report reports/live.md
 | 文档 | 内容 |
 |---|---|
 | [docs/quantdinger-setup.md](docs/quantdinger-setup.md) | **接入教程** — 从部署 QuantDinger 到 Codex/Claude Code 接入,含排错表与验收清单(全部命令已实测) |
+| [docs/factor-research-01.md](docs/factor-research-01.md) | **因子研究 01** — 价量因子 IC 检验:港股反转弱有效、美股低波反向;含两条方法论教训 |
 | [docs/three-engine-cross-validation.md](docs/three-engine-cross-validation.md) | **三引擎交叉验证** — 实证发现 `@strategy` 注解不生效、止损参数无万能值等缺陷 |
 | [docs/quantdinger-vs-factory.md](docs/quantdinger-vs-factory.md) | **重叠与互补地图** — 本工厂 8 层 vs QuantDinger 逐层对照,哪些该交给它、哪一处是我们的差异化 |
 | [.claude/skills/market-insight/](.claude/skills/market-insight/SKILL.md) | **市场洞察** — ①②层:单标的采集与洞察 |

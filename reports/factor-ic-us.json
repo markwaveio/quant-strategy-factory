@@ -1,0 +1,98 @@
+{
+ "market": "USStock",
+ "n_symbols": 40,
+ "n_bars": 1375,
+ "generated_at": "2026-07-23T15:01:46.724472",
+ "results": {
+  "反转_20日": {
+   "20": {
+    "ic_mean": -0.0238,
+    "ic_std": 0.2756,
+    "icir": -0.086,
+    "positive_pct": 0.482,
+    "t_stat": -0.65,
+    "n_periods": 56
+   }
+  },
+  "反转_5日": {
+   "20": {
+    "ic_mean": 0.0081,
+    "ic_std": 0.2394,
+    "icir": 0.034,
+    "positive_pct": 0.518,
+    "t_stat": 0.25,
+    "n_periods": 56
+   }
+  },
+  "动量_60日": {
+   "20": {
+    "ic_mean": -0.0294,
+    "ic_std": 0.2535,
+    "icir": -0.116,
+    "positive_pct": 0.518,
+    "t_stat": -0.87,
+    "n_periods": 56
+   }
+  },
+  "动量_120日": {
+   "20": {
+    "ic_mean": 0.0044,
+    "ic_std": 0.3106,
+    "icir": 0.014,
+    "positive_pct": 0.5,
+    "t_stat": 0.11,
+    "n_periods": 56
+   }
+  },
+  "低波_20日": {
+   "20": {
+    "ic_mean": -0.0757,
+    "ic_std": 0.2511,
+    "icir": -0.302,
+    "positive_pct": 0.393,
+    "t_stat": -2.26,
+    "n_periods": 56
+   }
+  },
+  "低波_60日": {
+   "20": {
+    "ic_mean": -0.0768,
+    "ic_std": 0.2741,
+    "icir": -0.28,
+    "positive_pct": 0.429,
+    "t_stat": -2.1,
+    "n_periods": 56
+   }
+  },
+  "低成交额": {
+   "20": {
+    "ic_mean": -0.0232,
+    "ic_std": 0.2137,
+    "icir": -0.108,
+    "positive_pct": 0.393,
+    "t_stat": -0.81,
+    "n_periods": 56
+   }
+  },
+  "靠近52周高": {
+   "20": {
+    "ic_mean": -0.0208,
+    "ic_std": 0.2934,
+    "icir": -0.071,
+    "positive_pct": 0.5,
+    "t_stat": -0.53,
+    "n_periods": 56
+   }
+  },
+  "动量_12减1": {
+   "20": {
+    "ic_mean": 0.039,
+    "ic_std": 0.2952,
+    "icir": 0.132,
+    "positive_pct": 0.536,
+    "t_stat": 0.99,
+    "n_periods": 56
+   }
+  }
+ }
+}
