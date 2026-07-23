@@ -101,11 +101,19 @@ class OpenDClient:
     # --- 历史行情 -------------------------------------------------------- #
 
     def history(self, market: str, symbol: str, start: str, end: str,
-                *, adjust: str = "qfq") -> list[Bar]:
+                *, adjust: str = "hfq") -> list[Bar]:
         """拉历史日 K(自动翻页)。
 
-        `adjust`: qfq 前复权 / hfq 后复权 / none 不复权。
-        **默认前复权** —— 不复权会让分红除权造成假跳空,污染均线与收益计算。
+        `adjust`: hfq 后复权 / qfq 前复权 / none 不复权。
+
+        **默认后复权。** 不复权会让除权造成假跳空,污染均线与收益;
+        但前复权也不能用于多年期研究 —— 它从历史价里逐次减去分红,
+        累计分红超过当年股价时调整后价格会变成负数(实测 8 年期 50 只港股
+        有 5 只中招),使收益率算出低于 -100% 的不可能值。
+        后复权锚定最早价格向后放大,永远为正。
+
+        只有"看当前价位"的场景(如画图、判断今日是否站上均线)才适合 qfq,
+        因为它保持最新价 = 真实市价。
         """
         from futu import RET_OK, AuType, KLType
         au = {"qfq": AuType.QFQ, "hfq": AuType.HFQ, "none": AuType.NONE}.get(adjust, AuType.QFQ)

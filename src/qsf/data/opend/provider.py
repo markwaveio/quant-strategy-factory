@@ -36,6 +36,10 @@ class OpenDDataProvider:
 
     def __init__(self, config: DataConfig, market: str = "HKStock",
                  client: OpenDClient | None = None, *, adjust: str = "qfq") -> None:
+        # 这里刻意用 qfq,与研究脚本(hfq)不同,不是笔误:
+        # 实时快照只回看约一年,qfq 在这个跨度不会出负价,
+        # 而它保持"最新价 = 真实市价",下单价位判断才对得上。
+        # 多年期因子研究必须用 hfq —— 见 client.history 的说明。
         self.config = config
         self.market = market
         self.adjust = adjust

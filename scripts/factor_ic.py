@@ -85,11 +85,18 @@ def _token() -> str:
         raise SystemExit("找不到 QD_AGENT_TOKEN,请设置环境变量") from e
 
 
-def fetch_opend(market: str, symbols: list[str], years: int):
+def fetch_opend(market: str, symbols: list[str], years: int, *, adjust: str = "hfq"):
     """从富途 OpenD 批量拉取 —— 工厂的统一数据源。
 
-    相比 QuantDinger agent 通道:20年历史、前复权、**带 PE 与换手率**。
+    相比 QuantDinger agent 通道:20年历史、复权、**带 PE 与换手率**。
     额度:100 只不同股票/30 天(同一只重复拉不计)。
+
+    **复权方式必须用后复权(hfq)。**
+    前复权是从历史价里逐次减去分红,跨年累计分红一旦超过当年股价,
+    调整后价格会变成负数 —— 实测 8 年期 50 只港股里有 5 只中招,
+    01114 有 1013 根 bar 价格为负(最低 -7.26),导致 close[t+h]/close[t]
+    出现负比值,算出「单期收益 -613%」这种不可能的数。
+    后复权锚定最早价格向后放大,永不为负,才是多年期研究的正确选择。
     """
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
     from datetime import timedelta
@@ -100,10 +107,27 @@ def fetch_opend(market: str, symbols: list[str], years: int):
     with OpenDClient() as c:
         used, remain = c.quota()
         print(f"  历史K线额度:已用 {used} / 剩余 {remain}", file=sys.stderr)
-        return c.history_batch(
-            market, symbols, start.isoformat(), end.isoformat(),
+        raw = c.history_batch(
+            market, symbols, start.isoformat(), end.isoformat(), adjust=adjust,
             on_progress=lambda i, n, ok: print(f"\r  拉取 {i}/{n} · 可用 {ok}",
                                                end="", file=sys.stderr))
+    return sanitize(raw)
+
+
+def sanitize(raw: dict[str, list]) -> dict[str, list]:
+    """数据体检 —— 把不可能的价格挡在研究之外,别让它们变成"发现"。
+
+    收益率的下界是 -100%。一旦看到更低的数,那是数据错了,不是市场跌了。
+    """
+    out = {}
+    for s, bars in raw.items():
+        bad = sum(1 for b in bars if not (b.close > 0 and b.high > 0 and b.low > 0))
+        if bad:
+            print(f"\n  ⚠️ {s}: {bad}/{len(bars)} 根 bar 价格非正,整只剔除",
+                  file=sys.stderr)
+            continue
+        out[s] = bars
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -187,9 +211,74 @@ def spearman(x: list[float], y: list[float]) -> float | None:
     return num / (dx * dy) if dx and dy else None
 
 
+def align_by_date(raw: dict[str, list]) -> tuple[list[str], dict[str, dict]]:
+    """把不等长的多标的序列对齐到统一交易日轴。
+
+    **横截面研究的前提是同一天比较。** 各标的上市时间不同、停牌天数不同,
+    bar 数量能差 3 年(实测 1483 vs 2237)。若按数组下标对齐,
+    index[250] 会落在 18 个不同日期上 —— 拿 A 的 2018 年因子值去配
+    B 的 2019 年收益,算出来的 IC 毫无意义。
+
+    处理:
+      · 日期轴 = 全体标的日期的并集
+      · 上市前 → None(不参与截面)
+      · 上市后停牌 → 前向填充价格、成交额置 0
+      · 最后一根 bar 之后 → 不填充(退市/长停不能当作"零涨跌")
+    """
+    all_dates = sorted({b.date for bars in raw.values() for b in bars})
+    pos = {d: i for i, d in enumerate(all_dates)}
+    n = len(all_dates)
+    panel: dict[str, dict] = {}
+    for s, bars in raw.items():
+        close: list = [None] * n
+        vol: list = [None] * n
+        pe: list = [None] * n
+        tr: list = [None] * n
+        for b in bars:
+            i = pos[b.date]
+            close[i], vol[i] = b.close, (b.turnover or b.volume)
+            pe[i], tr[i] = b.pe_ratio, b.turnover_rate
+        first = pos[bars[0].date]
+        last = pos[bars[-1].date]
+        for i in range(first + 1, last + 1):     # 只在生命周期内前向填充
+            if close[i] is None:
+                close[i], vol[i] = close[i - 1], 0.0
+                pe[i], tr[i] = pe[i - 1], 0.0
+        panel[s] = {"close": close, "vol": vol, "pe": pe, "tr": tr,
+                    "first": first, "last": last}
+    return all_dates, panel
+
+
+def cross_section(panel: dict[str, dict], t: int, h: int, ffn, is_fund: bool,
+                  warmup: int = 250) -> list[tuple[str, float, float]]:
+    """取 t 日的截面:返回 [(标的, 因子值, 未来h日收益)]。
+
+    只纳入「t 日已上市且预热够、t+h 日仍在交易」的标的。
+    """
+    out = []
+    for s, d in panel.items():
+        if t - d["first"] < warmup or t + h > d["last"]:
+            continue
+        c0 = d["close"][t]
+        if not c0:
+            continue
+        if is_fund:
+            fv = ffn(d["pe"][t], d["tr"][t])
+        else:
+            fv = ffn(d["close"][d["first"]:t + 1], d["vol"][d["first"]:t + 1])
+        if fv is None or not math.isfinite(fv):
+            continue
+        fut = d["close"][t + h] / c0 - 1.0
+        if math.isfinite(fut):
+            out.append((s, fv, fut))
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="因子 IC 检验")
     p.add_argument("--market", default="HKStock", choices=list(UNIVERSE))
+    p.add_argument("--universe", help="标的池 JSON(scripts/build_universe.py 产出),"
+                                      "给了就覆盖内置大盘池")
     p.add_argument("--horizon", type=int, nargs="+", default=[5, 20],
                    help="前瞻期(交易日)")
     p.add_argument("--years", type=int, default=8, help="回溯几年(OpenD 最多20年)")
@@ -197,30 +286,28 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("-o", "--output", help="结果写入 JSON")
     a = p.parse_args(argv)
 
-    syms = UNIVERSE[a.market]
-    print(f"=== 因子 IC 检验 · {a.market} · {len(syms)} 只标的 · 数据源 OpenD ===",
+    tier = "内置大盘池"
+    if a.universe:
+        with open(a.universe, encoding="utf-8") as f:
+            u = json.load(f)
+        syms, a.market, tier = u["symbols"], u["market"], u.get("cap_tier", "?")
+    else:
+        syms = UNIVERSE[a.market]
+    print(f"=== 因子 IC 检验 · {a.market} · {tier} · {len(syms)} 只标的 · 数据源 OpenD ===",
           file=sys.stderr)
 
     raw = fetch_opend(a.market, syms, a.years)
     print(file=sys.stderr)
-    data: dict[str, dict] = {}
-    for s, bars in raw.items():
-        if len(bars) < 300:
-            continue
-        data[s] = {
-            "close": [b.close for b in bars],
-            "vol":   [b.turnover or b.volume for b in bars],   # 优先成交额
-            "pe":    [b.pe_ratio for b in bars],
-            "tr":    [b.turnover_rate for b in bars],
-        }
-
-    if len(data) < 15:
-        print(f"❌ 可用标的仅 {len(data)} 只,横截面 IC 不可靠(需 ≥15)", file=sys.stderr)
+    raw = {s: b for s, b in raw.items() if len(b) >= 300}
+    if len(raw) < 15:
+        print(f"❌ 可用标的仅 {len(raw)} 只,横截面 IC 不可靠(需 ≥15)", file=sys.stderr)
         return 1
 
-    # 对齐长度:取所有标的都有的最短长度
-    n_bars = min(len(d["close"]) for d in data.values())
-    print(f"  可用 {len(data)} 只 × {n_bars} 根日K\n", file=sys.stderr)
+    # **按日期对齐** —— 不能按数组下标,各标的长度不同(见 align_by_date)
+    dates, data = align_by_date(raw)
+    n_bars = len(dates)
+    print(f"  可用 {len(data)} 只 · 交易日轴 {n_bars} 天 "
+          f"({dates[0]} ~ {dates[-1]})\n", file=sys.stderr)
 
     results: dict = {}
 
@@ -231,22 +318,15 @@ def main(argv: list[str] | None = None) -> int:
         results[fname] = {}
         for h in a.horizon:
             ics: list[float] = []
-            # 从 250(因子预热) 到 n_bars-h,按 step 取截面
-            for t in range(250, n_bars - h, a.step):
-                xs, ys = [], []
-                for _s, d in data.items():
-                    if kind == "fund":
-                        fv = ffn(d["pe"][t], d["tr"][t])
-                    else:
-                        c, v = d["close"][:t + 1], d["vol"][:t + 1]
-                        fv = ffn(c, v)
-                    if fv is None or not math.isfinite(fv):
-                        continue
-                    fut = d["close"][t + h] / d["close"][t] - 1.0 if d["close"][t] else None
-                    if fut is None or not math.isfinite(fut):
-                        continue
-                    xs.append(fv)
-                    ys.append(fut)
+            # **步长必须 ≥ 前瞻期**,否则相邻样本的收益窗口重叠 → IC 序列自相关
+            # → t 统计量被严重高估(实测 step=5/horizon=60 给出 t=11.89,
+            #   改成不重叠后只有 2.31,结论从"极显著"变成"勉强")。
+            step = max(a.step, h)
+            # 从 250(因子预热) 到 n_bars-h 取截面
+            for t in range(250, n_bars - h, step):
+                sec = cross_section(data, t, h, ffn, kind == "fund")
+                xs = [x for _, x, _ in sec]
+                ys = [y for _, _, y in sec]
                 ic = spearman(xs, ys) if len(xs) >= 15 else None
                 if ic is not None and math.isfinite(ic):
                     ics.append(ic)
@@ -261,6 +341,7 @@ def main(argv: list[str] | None = None) -> int:
                 "positive_pct": round(sum(1 for x in ics if x > 0) / len(ics), 3),
                 "t_stat": round(m / (sd / math.sqrt(len(ics))), 2) if sd else 0.0,
                 "n_periods": len(ics),
+                "step": step,           # 记录实际步长,便于判断样本是否独立
             }
 
     # 输出
@@ -280,8 +361,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if a.output:
         with open(a.output, "w", encoding="utf-8") as f:
-            json.dump({"market": a.market, "n_symbols": len(data),
-                       "n_bars": n_bars, "generated_at": datetime.now().isoformat(),
+            json.dump({"market": a.market, "cap_tier": tier, "n_symbols": len(data),
+                       "n_bars": n_bars, "years": a.years,
+                       "symbols": sorted(data),
+                       "generated_at": datetime.now().isoformat(),
                        "results": results}, f, ensure_ascii=False, indent=1)
         print(f"\n✅ 已写入 {a.output}", file=sys.stderr)
     return 0

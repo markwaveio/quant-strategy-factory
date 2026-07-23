@@ -1,0 +1,467 @@
+{
+ "market": "HKStock",
+ "cap_tier": "mid_small",
+ "built_at": "2026-07-23",
+ "filters": {
+  "min_turnover": 10000000.0,
+  "min_years": 6,
+  "cap_range": [
+   1000000000.0,
+   20000000000.0
+  ]
+ },
+ "symbols": [
+  "00568",
+  "01780",
+  "06110",
+  "00354",
+  "00622",
+  "01141",
+  "01918",
+  "00179",
+  "01477",
+  "01357",
+  "09911",
+  "02314",
+  "01302",
+  "00586",
+  "01164",
+  "00165",
+  "00038",
+  "06855",
+  "00772",
+  "00826",
+  "01428",
+  "01114",
+  "01907",
+  "00853",
+  "00817",
+  "01860",
+  "06060",
+  "01415",
+  "01833",
+  "06098",
+  "00697",
+  "02186",
+  "00117",
+  "01066",
+  "00290",
+  "01060",
+  "01877",
+  "00303",
+  "00317",
+  "06055",
+  "01057",
+  "00590",
+  "01478",
+  "01815",
+  "02722",
+  "03899",
+  "09929",
+  "02007",
+  "03900",
+  "00975"
+ ],
+ "detail": [
+  {
+   "code": "HK.00568",
+   "cap": 5074315824.0,
+   "turnover": 848611196.0,
+   "pe": 795.0,
+   "listing_confirmed": true,
+   "name": "山东墨龙"
+  },
+  {
+   "code": "HK.01780",
+   "cap": 2101800000.0,
+   "turnover": 214124120.0,
+   "pe": null,
+   "listing_confirmed": true,
+   "name": "荣尊国际控股"
+  },
+  {
+   "code": "HK.06110",
+   "cap": 8247625291.92,
+   "turnover": 181092508.0,
+   "pe": 5.757,
+   "listing_confirmed": true,
+   "name": "滔搏"
+  },
+  {
+   "code": "HK.00354",
+   "cap": 9507636165.84,
+   "turnover": 171050670.0,
+   "pe": 26.769,
+   "listing_confirmed": true,
+   "name": "中国软件国际"
+  },
+  {
+   "code": "HK.00622",
+   "cap": 17289273481.74,
+   "turnover": 142598581.0,
+   "pe": 95.769,
+   "listing_confirmed": true,
+   "name": "威华达控股"
+  },
+  {
+   "code": "HK.01141",
+   "cap": 4420783832.79,
+   "turnover": 136069658.0,
+   "pe": 29.202,
+   "listing_confirmed": true,
+   "name": "民银资本"
+  },
+  {
+   "code": "HK.01918",
+   "cap": 10981024791.0,
+   "turnover": 124918214.0,
+   "pe": null,
+   "listing_confirmed": true,
+   "name": "融创中国"
+  },
+  {
+   "code": "HK.00179",
+   "cap": 16417619437.38,
+   "turnover": 106458586.0,
+   "pe": 10.365,
+   "listing_confirmed": true,
+   "name": "德昌电机控股"
+  },
+  {
+   "code": "HK.01477",
+   "cap": 4680295056.36,
+   "turnover": 90734532.0,
+   "pe": null,
+   "listing_confirmed": true,
+   "name": "欧康维视生物-B"
+  },
+  {
+   "code": "HK.01357",
+   "cap": 18228402423.4,
+   "turnover": 88112218.0,
+   "pe": 28.181,
+   "listing_confirmed": true,
+   "name": "美图公司"
+  },
+  {
+   "code": "HK.09911",
+   "cap": 12318360992.98,
+   "turnover": 87846496.0,
+   "pe": 11.913,
+   "listing_confirmed": true,
+   "name": "赤子城科技"
+  },
+  {
+   "code": "HK.02314",
+   "cap": 17609500000.0,
+   "turnover": 86149180.0,
+   "pe": 9.07,
+   "listing_confirmed": true,
+   "name": "理文造纸"
+  },
+  {
+   "code": "HK.01302",
+   "cap": 7318105592.0,
+   "turnover": 82633012.0,
+   "pe": 45.142,
+   "listing_confirmed": true,
+   "name": "先健科技"
+  },
+  {
+   "code": "HK.00586",
+   "cap": 15734120498.02,
+   "turnover": 80953555.0,
+   "pe": 6.33,
+   "listing_confirmed": true,
+   "name": "海螺创业"
+  },
+  {
+   "code": "HK.01164",
+   "cap": 19305733918.3,
+   "turnover": 73224492.0,
+   "pe": 42.333,
+   "listing_confirmed": true,
+   "name": "中广核矿业"
+  },
+  {
+   "code": "HK.00165",
+   "cap": 10499130625.76,
+   "turnover": 69312038.0,
+   "pe": null,
+   "listing_confirmed": true,
+   "name": "中国光大控股"
+  },
+  {
+   "code": "HK.00038",
+   "cap": 10213935549.75,
+   "turnover": 69169354.0,
+   "pe": 10.669,
+   "listing_confirmed": true,
+   "name": "第一拖拉机股份"
+  },
+  {
+   "code": "HK.06855",
+   "cap": 13866390108.16,
+   "turnover": 63962439.0,
+   "pe": null,
+   "listing_confirmed": true,
+   "name": "亚盛医药"
+  },
+  {
+   "code": "HK.00772",
+   "cap": 18903774404.9,
+   "turnover": 62879254.0,
+   "pe": null,
+   "listing_confirmed": true,
+   "name": "阅文集团"
+  },
+  {
+   "code": "HK.00826",
+   "cap": 8311250000.0,
+   "turnover": 60073166.0,
+   "pe": 18.711,
+   "listing_confirmed": true,
+   "name": "天工国际"
+  },
+  {
+   "code": "HK.01428",
+   "cap": 11388858226.68,
+   "turnover": 59596230.0,
+   "pe": 16.987,
+   "listing_confirmed": true,
+   "name": "耀才证券金融"
+  },
+  {
+   "code": "HK.01114",
+   "cap": 10393254939.28,
+   "turnover": 59517356.0,
+   "pe": 4.724,
+   "listing_confirmed": true,
+   "name": "BRILLIANCE CHI"
+  },
+  {
+   "code": "HK.01907",
+   "cap": 8506354000.0,
+   "turnover": 56674884.0,
+   "pe": 133.333,
+   "listing_confirmed": true,
+   "name": "中国旭阳集团"
+  },
+  {
+   "code": "HK.00853",
+   "cap": 13134098586.75,
+   "turnover": 55447778.0,
+   "pe": 34.771,
+   "listing_confirmed": true,
+   "name": "微创医疗"
+  },
+  {
+   "code": "HK.00817",
+   "cap": 18782328223.72,
+   "turnover": 50076732.0,
+   "pe": 13.495,
+   "listing_confirmed": true,
+   "name": "中国金茂"
+  },
+  {
+   "code": "HK.01860",
+   "cap": 18294542557.56,
+   "turnover": 50015450.0,
+   "pe": 31.296,
+   "listing_confirmed": true,
+   "name": "汇量科技"
+  },
+  {
+   "code": "HK.06060",
+   "cap": 18364460610.0,
+   "turnover": 49356092.0,
+   "pe": 15.055,
+   "listing_confirmed": true,
+   "name": "众安在线"
+  },
+  {
+   "code": "HK.01415",
+   "cap": 18688411944.0,
+   "turnover": 47694680.0,
+   "pe": 12.197,
+   "listing_confirmed": true,
+   "name": "高伟电子"
+  },
+  {
+   "code": "HK.01833",
+   "cap": 16513430020.8,
+   "turnover": 47086983.0,
+   "pe": 34.26,
+   "listing_confirmed": true,
+   "name": "平安好医生"
+  },
+  {
+   "code": "HK.06098",
+   "cap": 18148923103.73,
+   "turnover": 46424959.0,
+   "pe": 27.303,
+   "listing_confirmed": true,
+   "name": "碧桂园服务"
+  },
+  {
+   "code": "HK.00697",
+   "cap": 13594051973.7,
+   "turnover": 43905176.0,
+   "pe": 77.272,
+   "listing_confirmed": true,
+   "name": "首程控股"
+  },
+  {
+   "code": "HK.02186",
+   "cap": 8468373820.36,
+   "turnover": 42460338.0,
+   "pe": 12.325,
+   "listing_confirmed": true,
+   "name": "绿叶制药"
+  },
+  {
+   "code": "HK.00117",
+   "cap": 2077852500.0,
+   "turnover": 40813120.0,
+   "pe": 14.09,
+   "listing_confirmed": true,
+   "name": "天利控股集团"
+  },
+  {
+   "code": "HK.01066",
+   "cap": 14831773769.96,
+   "turnover": 40363387.0,
+   "pe": 8.308,
+   "listing_confirmed": true,
+   "name": "威高股份"
+  },
+  {
+   "code": "HK.00290",
+   "cap": 17928703548.36,
+   "turnover": 40172675.0,
+   "pe": null,
+   "listing_confirmed": true,
+   "name": "国富量子"
+  },
+  {
+   "code": "HK.01060",
+   "cap": 14388843036.0,
+   "turnover": 39855758.0,
+   "pe": 17.777,
+   "listing_confirmed": true,
+   "name": "大麦娱乐"
+  },
+  {
+   "code": "HK.01877",
+   "cap": 19722712421.91,
+   "turnover": 39599446.0,
+   "pe": null,
+   "listing_confirmed": true,
+   "name": "君实生物"
+  },
+  {
+   "code": "HK.00303",
+   "cap": 13375156331.5,
+   "turnover": 39454065.0,
+   "pe": 12.726,
+   "listing_confirmed": true,
+   "name": "VTECH HOLDINGS"
+  },
+  {
+   "code": "HK.00317",
+   "cap": 16538024622.6,
+   "turnover": 38179620.0,
+   "pe": 11.975,
+   "listing_confirmed": true,
+   "name": "中船防务"
+  },
+  {
+   "code": "HK.06055",
+   "cap": 14871120000.0,
+   "turnover": 37820047.0,
+   "pe": 15.172,
+   "listing_confirmed": true,
+   "name": "中烟香港"
+  },
+  {
+   "code": "HK.01057",
+   "cap": 2969702906.24,
+   "turnover": 37573000.0,
+   "pe": 15.104,
+   "listing_confirmed": true,
+   "name": "浙江世宝"
+  },
+  {
+   "code": "HK.00590",
+   "cap": 14384142325.0,
+   "turnover": 37201799.0,
+   "pe": 7.03,
+   "listing_confirmed": true,
+   "name": "六福集团"
+  },
+  {
+   "code": "HK.01478",
+   "cap": 8627111034.5,
+   "turnover": 36987230.0,
+   "pe": 5.216,
+   "listing_confirmed": true,
+   "name": "丘钛科技"
+  },
+  {
+   "code": "HK.01815",
+   "cap": 2008793808.0,
+   "turnover": 36240708.0,
+   "pe": 17.682,
+   "listing_confirmed": true,
+   "name": "珠峰黄金"
+  },
+  {
+   "code": "HK.02722",
+   "cap": 7627205118.78,
+   "turnover": 35601489.0,
+   "pe": 9.0,
+   "listing_confirmed": true,
+   "name": "重庆机电"
+  },
+  {
+   "code": "HK.03899",
+   "cap": 16592408933.58,
+   "turnover": 35008828.0,
+   "pe": 13.21,
+   "listing_confirmed": true,
+   "name": "中集安瑞科"
+  },
+  {
+   "code": "HK.09929",
+   "cap": 3560000000.0,
+   "turnover": 34676400.0,
+   "pe": null,
+   "listing_confirmed": true,
+   "name": "澳达控股"
+  },
+  {
+   "code": "HK.02007",
+   "cap": 8531606844.184,
+   "turnover": 33648836.0,
+   "pe": 2.358,
+   "listing_confirmed": true,
+   "name": "碧桂园"
+  },
+  {
+   "code": "HK.03900",
+   "cap": 18945406227.4,
+   "turnover": 32106154.0,
+   "pe": 240.645,
+   "listing_confirmed": true,
+   "name": "绿城中国"
+  },
+  {
+   "code": "HK.00975",
+   "cap": 8016090716.5,
+   "turnover": 31060770.0,
+   "pe": 168.478,
+   "listing_confirmed": true,
+   "name": "MONGOL MINING"
+  }
+ ]
+}
