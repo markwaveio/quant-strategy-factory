@@ -104,7 +104,7 @@ class MarketSnapshot(BaseModel):
     features: dict[str, FeatureSet] = Field(default_factory=dict)      # symbol -> features
     # 数据体检报告随快照一路流到评估层 —— 否则质疑者拿不到,新加的
     # 数据审查就是空转(实测:接进 provider 后流水线里依然没人传它)。
-    # 前向引用:DataQualityReport 定义在文件末尾的第 9 节。
+    # 前向引用:DataQualityReport 定义在文件末尾的数据质量章节。
     quality: DataQualityReport | None = None
 
     @property
@@ -156,6 +156,14 @@ class StrategyProposal(BaseModel):
     rationale: str                          # 为什么在此刻提出该策略
     params: dict[str, float] = Field(default_factory=dict)  # 策略参数
     triggered_by: list[str] = Field(default_factory=list)   # 关联的洞察 summary
+
+
+class ScanCandidate(BaseModel):
+    symbol: str
+    score: float
+    reasons: list[str] = Field(default_factory=list)
+    evidence: dict[str, float] = Field(default_factory=dict)
+    recommended_families: list[StrategyFamily] = Field(default_factory=list)
 
 
 # --------------------------------------------------------------------------- #
@@ -370,7 +378,57 @@ class ReviewNote(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
-# 9. 数据质量 & 横截面证据                                                       #
+# 9. 研究证据包                                                                 #
+# --------------------------------------------------------------------------- #
+
+
+class ResearchStatus(str, Enum):
+    """策略研究状态。
+
+    这里刻意不用交易系统语义。工厂的定位是发现和验证策略,不是自动下单。
+    `promote_to_sim` 表示证据足够进入模拟交易/外部回测验证,不是实盘批准。
+    """
+
+    PROMOTE_TO_SIM = "promote_to_sim"
+    WATCHLIST = "watchlist"
+    REJECT = "reject"
+
+
+class StrategyEvidenceCard(BaseModel):
+    """单个策略候选的研究证据卡。
+
+    这是给研究流程消费的结构化产物:保留策略参数、证据、评审结论和下一步。
+    模拟交易系统可以读取其中 `symbol` / `family` / `params` / `action` 等字段,
+    但仍应把它当作候选策略,而不是自动交易指令。
+    """
+
+    strategy_id: str
+    symbol: str
+    family: StrategyFamily
+    status: ResearchStatus
+    action: Action
+    params: dict[str, float] = Field(default_factory=dict)
+    hypothesis: str = ""
+    triggered_by: list[str] = Field(default_factory=list)
+    final_verdict: Verdict
+    aggregate_score: float = 0.0
+    metrics: BacktestMetrics | None = None
+    reasons: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    next_step: str = ""
+
+
+class ResearchReport(BaseModel):
+    """一次运行的策略研究证据包。"""
+
+    as_of: datetime
+    summary: str = ""
+    cards: list[StrategyEvidenceCard] = Field(default_factory=list)
+    disclaimer: str = "本研究证据包仅用于策略研究与模拟验证,不构成投资建议或实盘指令。"
+
+
+# --------------------------------------------------------------------------- #
+# 10. 数据质量 & 横截面证据                                                      #
 #                                                                             #
 # 这两组契约是补课补出来的。2026-07 的因子研究里,两个 bug(截面按数组下标      #
 # 对齐、前复权产生负价)加两个方法论陷阱(IC≠盈亏、选池前视偏差)联手造出了      #

@@ -14,6 +14,7 @@ from pathlib import Path
 
 from qsf.core.config import Config
 from qsf.core.pipeline import Pipeline
+from qsf.research.reporter import render_research_markdown, strategy_payload_json
 from qsf.review.report import render_markdown
 
 
@@ -24,7 +25,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     result = pipeline.run()
 
     assert result.report is not None
-    md = render_markdown(result.report, result.review)
+    md = render_markdown(result.report, result.review, result.scan_candidates)
     print(md)
 
     if args.report:
@@ -32,6 +33,20 @@ def _cmd_run(args: argparse.Namespace) -> int:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(md, encoding="utf-8")
         print(f"\n[已写入报告] {out}", file=sys.stderr)
+
+    if args.research_report:
+        assert result.research_report is not None
+        out = Path(args.research_report)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(render_research_markdown(result.research_report), encoding="utf-8")
+        print(f"\n[已写入研究证据包] {out}", file=sys.stderr)
+
+    if args.strategies:
+        assert result.research_report is not None
+        out = Path(args.strategies)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(strategy_payload_json(result.research_report), encoding="utf-8")
+        print(f"\n[已写入策略候选 JSON] {out}", file=sys.stderr)
 
     # 简要统计到 stderr,方便脚本消费
     summary = Pipeline.summarize(result)
@@ -48,6 +63,16 @@ def main(argv: list[str] | None = None) -> int:
     p_run = sub.add_parser("run", help="运行一次完整流水线")
     p_run.add_argument("--config", help="YAML 配置文件路径", default=None)
     p_run.add_argument("--report", help="把 Markdown 报告写入该路径", default=None)
+    p_run.add_argument(
+        "--research-report",
+        help="把策略研究证据包 Markdown 写入该路径",
+        default=None,
+    )
+    p_run.add_argument(
+        "--strategies",
+        help="把策略候选证据 JSON 写入该路径,供模拟交易或外部回测读取",
+        default=None,
+    )
     p_run.set_defaults(func=_cmd_run)
 
     args = parser.parse_args(argv)

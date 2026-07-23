@@ -31,6 +31,16 @@ class StrategyConfig(BaseModel):
     min_trades: int = 5             # 任一标的交易数低于此值的参数组淘汰
 
 
+class ScanConfig(BaseModel):
+    enabled: bool = False
+    max_candidates: int = 30
+    min_score: float = 0.35
+    momentum_threshold: float = 0.06
+    volatility_threshold: float = 0.35
+    volume_surge_threshold: float = 1.8
+    near_high_threshold: float = 0.98
+
+
 class EvaluationConfig(BaseModel):
     provider: str = "mock"                   # mock | anthropic
     model: str = "claude-opus-4-8"           # 真实评审时用最新 Claude 模型
@@ -55,6 +65,7 @@ class Config(BaseModel):
 
     run_id: str = "adhoc"
     data: DataConfig = Field(default_factory=DataConfig)
+    scan: ScanConfig = Field(default_factory=ScanConfig)
     strategy: StrategyConfig = Field(default_factory=StrategyConfig)
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
     backtest: BacktestConfig = Field(default_factory=BacktestConfig)

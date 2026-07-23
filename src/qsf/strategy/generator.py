@@ -53,7 +53,10 @@ class StrategyGenerator:
         return f"{family.value}:{symbol}:{uuid.uuid4().hex[:6]}"
 
     def generate(
-        self, snapshot: MarketSnapshot, insights: list[Insight]
+        self,
+        snapshot: MarketSnapshot,
+        insights: list[Insight],
+        allowed_families_by_symbol: dict[str, set[StrategyFamily]] | None = None,
     ) -> list[StrategyProposal]:
         by_symbol: dict[str, list[Insight]] = {}
         for ins in insights:
@@ -78,10 +81,13 @@ class StrategyGenerator:
             kinds = {i.kind for i in sym_insights}
             summaries = [i.summary for i in sym_insights]
             made: list[StrategyProposal] = []
+            allowed = allowed_families_by_symbol.get(symbol) if allowed_families_by_symbol else None
 
             # 趋势:走强或有正动量
             mom = (feat.momentum or 0.0) if feat else 0.0
-            if InsightKind.STRENGTH in kinds or mom > 0.03:
+            if (allowed is None or StrategyFamily.TREND in allowed) and (
+                InsightKind.STRENGTH in kinds or mom > 0.03
+            ):
                 made.append(
                     StrategyProposal(
                         id=self._new_id(StrategyFamily.TREND, symbol),
@@ -95,7 +101,9 @@ class StrategyGenerator:
 
             # 均值回归:高波动或结构切换
             vol = (feat.volatility or 0.0) if feat else 0.0
-            if InsightKind.REGIME_SHIFT in kinds or vol > 0.35:
+            if (allowed is None or StrategyFamily.MEAN_REVERSION in allowed) and (
+                InsightKind.REGIME_SHIFT in kinds or vol > 0.35
+            ):
                 made.append(
                     StrategyProposal(
                         id=self._new_id(StrategyFamily.MEAN_REVERSION, symbol),
@@ -108,7 +116,9 @@ class StrategyGenerator:
                 )
 
             # 新闻事件:黑天鹅或极端情绪
-            if InsightKind.EVENT in kinds:
+            if (allowed is None or StrategyFamily.NEWS_EVENT in allowed) and (
+                InsightKind.EVENT in kinds
+            ):
                 swan = (feat.black_swan_score if feat else 0.0)
                 # 找到黑天鹅相对位置:mock 里写死在倒数第 12 天附近,这里用特征估一个
                 shock_index = 12 if swan > 0 else 0
@@ -124,7 +134,7 @@ class StrategyGenerator:
                 )
 
             # 兜底:该标的一个提案都没有,给个保守趋势提案
-            if not made:
+            if not made and (allowed is None or StrategyFamily.TREND in allowed):
                 made.append(
                     StrategyProposal(
                         id=self._new_id(StrategyFamily.TREND, symbol),

@@ -2,15 +2,32 @@
 
 from __future__ import annotations
 
-from qsf.core.schema import DecisionReport, ReviewNote
+from qsf.core.schema import DecisionReport, ReviewNote, ScanCandidate
 
 
-def render_markdown(report: DecisionReport, review: ReviewNote | None = None) -> str:
+def render_markdown(
+    report: DecisionReport,
+    review: ReviewNote | None = None,
+    scan_candidates: list[ScanCandidate] | None = None,
+) -> str:
     lines: list[str] = []
     lines.append(f"# 量化决策报告 · {report.as_of:%Y-%m-%d %H:%M}")
     lines.append("")
     lines.append(f"> {report.market_summary}")
     lines.append("")
+
+    if scan_candidates:
+        lines.append("## 每日扫描候选")
+        lines.append("")
+        lines.append("| 标的 | 分数 | 推荐策略族 | 触发理由 |")
+        lines.append("| --- | ---: | --- | --- |")
+        for candidate in scan_candidates:
+            families = " / ".join(f.value for f in candidate.recommended_families)
+            reasons = "; ".join(candidate.reasons[:3])
+            lines.append(
+                f"| {candidate.symbol} | {candidate.score:.2f} | {families} | {reasons} |"
+            )
+        lines.append("")
 
     if report.top_insights:
         lines.append("## 关键市场洞察")
