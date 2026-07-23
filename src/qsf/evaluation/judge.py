@@ -18,6 +18,8 @@ from dataclasses import dataclass
 
 from qsf.core.schema import (
     BacktestMetrics,
+    DataQualityReport,
+    FactorEvidence,
     ReviewOpinion,
     ReviewRole,
     StrategyProposal,
@@ -34,6 +36,11 @@ class ReviewContext:
     market_features: dict[str, float]       # 该标的的关键特征快照
     similar_failures: int                   # 记忆层里同族同标的失败过多少次
     max_drawdown_limit: float               # 风险红线(来自配置)
+    # 证据链(可选)—— 质疑者先审证据、再审策略。
+    # 补这两项是因为:2026-07 有个「净年化 78.7%」的因子完全是数据 bug 加
+    # 选池前视偏差造出来的,而当时的质疑者只盯策略逻辑,一句都问不到点上。
+    evidence: FactorEvidence | None = None
+    data_quality: DataQualityReport | None = None
 
     def to_prompt_dict(self) -> dict:
         """整理成可读、可序列化的结构,给真实 LLM 用。"""
@@ -57,6 +64,24 @@ class ReviewContext:
             "market_features": self.market_features,
             "memory": {"similar_failures": self.similar_failures},
             "risk_policy": {"max_drawdown_limit": self.max_drawdown_limit},
+            # 证据链放在最前面审 —— 数据错了,策略逻辑再漂亮也没意义
+            "evidence": (
+                {
+                    **self.evidence.model_dump(exclude={"quantiles"}),
+                    "checks": self.evidence.passed(),
+                    "t_threshold": round(self.evidence.bonferroni_threshold, 2),
+                }
+                if self.evidence else None
+            ),
+            "data_quality": (
+                {
+                    "n_symbols": self.data_quality.n_symbols,
+                    "n_dropped": self.data_quality.n_dropped,
+                    "index_alignment_safe": self.data_quality.index_alignment_safe,
+                    "fatal_issues": [i.detail for i in self.data_quality.fatal],
+                }
+                if self.data_quality else None
+            ),
         }
 
 
@@ -86,11 +111,72 @@ class MockLLMJudge(LLMJudge):
             return self._risk_officer(ctx)
         return self._committee(ctx)
 
-    # 质疑者:盯过拟合与参数合理性
+    # 质疑者:先审证据,再审策略
+    #
+    # 顺序是刻意的。策略逻辑再漂亮,若底下的数据或方法是错的,审它没有意义。
+    # 实测教训:一个「净年化 78.7%、夏普 1.31、单调、成本极不敏感」的因子,
+    # 全部漂亮指标都来自两个数据 bug 加一层选池前视偏差。
     def _skeptic(self, ctx: ReviewContext) -> ReviewOpinion:
         concerns: list[str] = []
         suggestions: list[str] = []
         m = ctx.metrics
+
+        # ── 第一关:数据本身可信吗 ──────────────────────────────
+        dq = ctx.data_quality
+        if dq is not None:
+            for issue in dq.fatal:
+                concerns.append(f"数据不可信:{issue.symbol} {issue.detail}")
+            if not dq.index_alignment_safe:
+                concerns.append(
+                    f"各标的 bar 数量 {dq.bar_count_min}~{dq.bar_count_max},"
+                    "若按数组下标做横截面,比较的根本不是同一天"
+                )
+                suggestions.append("横截面一律按日期对齐(Panel),禁用数组下标")
+            if dq.n_dropped:
+                concerns.append(
+                    f"{dq.n_dropped} 只标的因数据问题被剔除,"
+                    "剩余样本可能已不能代表原标的池"
+                )
+
+        # ── 第二关:证据链撑得住吗 ──────────────────────────────
+        ev = ctx.evidence
+        if ev is not None:
+            checks = ev.passed()
+            if not checks["多重检验"]:
+                concerns.append(
+                    f"t={ev.t_stat:.2f} 未过多重检验门槛 "
+                    f"{ev.bonferroni_threshold:.2f}(共检验 {ev.n_hypotheses} 个假设)"
+                    " —— 这个显著性可能只是运气"
+                )
+                suggestions.append("减少候选因子数量,或在独立样本上复现")
+            if not checks["分层单调"]:
+                concerns.append(
+                    f"分层单调性仅 {ev.monotonicity:.0%},收益由个别极端档驱动,"
+                    "IC 为正也未必能交易"
+                )
+            if not checks["扣费为正"]:
+                concerns.append(
+                    f"扣费后年化 {ev.net_annual:.2%}(换手 {ev.avg_turnover:.1%}/期),"
+                    "毛收益被摩擦吃光"
+                )
+            if not checks["分段稳定"] and ev.subperiod_annual:
+                segs = " / ".join(f"{s:.1%}" for s in ev.subperiod_annual)
+                concerns.append(f"分段收益 {segs} 不稳定,警惕样本期特殊性")
+            # 逐段递增是选池前视偏差的指纹 —— 单独点名
+            subs = ev.subperiod_annual
+            if len(subs) >= 3 and subs[0] <= 0 and all(
+                subs[i] < subs[i + 1] for i in range(len(subs) - 1)
+            ):
+                concerns.append(
+                    f"收益逐段递增且最早一段为负({subs[0]:.1%}→{subs[-1]:.1%}),"
+                    "这是**前视偏差**的典型指纹 —— 标的池很可能用了未来信息"
+                )
+                suggestions.append(
+                    f"标的池当前选法「{ev.universe_selection or '未记录'}」需改为时点重建,"
+                    "并在无偏池上交叉验证"
+                )
+            if not ev.universe_selection:
+                concerns.append("未记录标的池的选取方式,无法判断是否引入前视偏差")
 
         # 交易次数太少 → 统计不显著,可能过拟合
         # 门槛设 10:实测中一个 5 笔交易、0% 胜率的失败策略曾被判 APPROVE
@@ -112,8 +198,17 @@ class MockLLMJudge(LLMJudge):
             if v != 0 and (abs(v) > 100 or (0 < abs(v) < 1e-3)):
                 concerns.append(f"参数 {k}={v} 取值可疑,像是手工凑出来的")
 
-        verdict = Verdict.APPROVE if not concerns else Verdict.REVISE
-        confidence = 0.8 if not concerns else max(0.4, 0.8 - 0.1 * len(concerns))
+        # 数据不可信 = 一票否决。这类问题不是"改改参数"能解决的,
+        # 在错的数据上调参只会得到更精致的错误。
+        blocked = (ctx.data_quality is not None and not ctx.data_quality.ok) or (
+            ctx.evidence is not None and not ctx.evidence.verdict_ok
+        )
+        if blocked:
+            verdict = Verdict.REJECT
+            confidence = 0.9
+        else:
+            verdict = Verdict.APPROVE if not concerns else Verdict.REVISE
+            confidence = 0.8 if not concerns else max(0.4, 0.8 - 0.1 * len(concerns))
         return ReviewOpinion(
             role=ReviewRole.SKEPTIC,
             strategy_id=ctx.proposal.id,
@@ -121,7 +216,7 @@ class MockLLMJudge(LLMJudge):
             confidence=round(confidence, 2),
             concerns=concerns,
             suggestions=suggestions,
-            rationale="从过拟合与参数稳健性角度审查",
+            rationale="先审数据与方法,再审过拟合与参数稳健性",
         )
 
     # 风险官:盯最坏亏损

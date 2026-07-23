@@ -13,12 +13,14 @@ from qsf.core.config import DataConfig
 from qsf.core.schema import (
     OHLCV,
     AssetClass,
+    DataQualityReport,
     MarketSnapshot,
     PriceSeries,
 )
 from qsf.data.features import extract_features
 from qsf.data.normalize import normalize_prices
 from qsf.data.opend.client import OpenDClient, OpenDError
+from qsf.data.quality import check_panel
 
 _ASSET_CLASS = {
     "HKStock": AssetClass.OTHER,
@@ -44,6 +46,8 @@ class OpenDDataProvider:
         self.market = market
         self.adjust = adjust
         self._client = client
+        # 最近一次 build_snapshot 的数据体检报告,供评估层的质疑者审问
+        self.quality: DataQualityReport | None = None
 
     def build_snapshot(self) -> MarketSnapshot:
         if not self.config.symbols:
@@ -73,14 +77,29 @@ class OpenDDataProvider:
             )
 
         ac = _ASSET_CLASS.get(self.market, AssetClass.OTHER)
-        prices, features = {}, {}
-        for sym, bars in raw.items():
-            series = PriceSeries(
+
+        # 先体检,再清洗。顺序很重要:
+        # `normalize_prices` 会**静默剔除**非法 bar —— 实测 01114 在前复权下
+        # 1728 根只剩 715 根,序列残缺却毫无提示,下游照常出结论。
+        # 体检必须在清洗之前跑,才能看见原始损坏程度并决定要不要阻断。
+        rawseries = {
+            sym: PriceSeries(
                 symbol=sym, asset_class=ac,
                 bars=[OHLCV(ts=datetime.strptime(b.date, "%Y-%m-%d"),
                             open=b.open, high=b.high, low=b.low,
                             close=b.close, volume=b.volume) for b in bars],
             )
+            for sym, bars in raw.items()
+        }
+        healthy, self.quality = check_panel(rawseries)
+        if not healthy:
+            raise OpenDError(
+                f"全部标的都没通过数据体检:\n{self.quality.render()}"
+            )
+
+        prices, features = {}, {}
+        for sym, series in healthy.items():
+            bars = raw[sym]
             clean = normalize_prices(series)
             if not clean.bars:
                 continue

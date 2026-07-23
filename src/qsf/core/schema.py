@@ -335,3 +335,164 @@ class ReviewNote(BaseModel):
     best_sharpe: float | None = None
     key_takeaways: list[str] = Field(default_factory=list)
     improvements: list[str] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------------- #
+# 9. 数据质量 & 横截面证据                                                       #
+#                                                                             #
+# 这两组契约是补课补出来的。2026-07 的因子研究里,两个 bug(截面按数组下标      #
+# 对齐、前复权产生负价)加两个方法论陷阱(IC≠盈亏、选池前视偏差)联手造出了      #
+# 「净年化 78.7%、夏普 1.31」的假结果,而八层架构没有任何一层能拦住 ——        #
+# 数据层不校验、评估层只质疑策略逻辑、回测层没有横截面能力。                    #
+# 详见 docs/factor-research-02.md。                                            #
+# --------------------------------------------------------------------------- #
+
+
+class QualityIssue(BaseModel):
+    """一条数据质量问题。`fatal` 的必须阻断流水线,不能只是打日志。"""
+
+    symbol: str
+    code: str            # 机器可读:negative_price / impossible_return / ...
+    detail: str
+    fatal: bool = False
+
+
+class DataQualityReport(BaseModel):
+    """数据体检结论。进入研究/策略生成之前必须先过这一关。"""
+
+    n_symbols: int = 0
+    n_dropped: int = 0
+    dropped: dict[str, str] = Field(default_factory=dict)   # symbol → 原因
+    issues: list[QualityIssue] = Field(default_factory=list)
+    # 各标的 bar 数量差异过大 → 绝不能按数组下标做横截面
+    bar_count_min: int = 0
+    bar_count_max: int = 0
+    index_alignment_safe: bool = True
+
+    @property
+    def fatal(self) -> list[QualityIssue]:
+        return [i for i in self.issues if i.fatal]
+
+    @property
+    def ok(self) -> bool:
+        return not self.fatal
+
+    def render(self) -> str:
+        lines = [f"数据体检:{self.n_symbols} 只,剔除 {self.n_dropped} 只"]
+        if not self.index_alignment_safe:
+            lines.append(
+                f"  ⚠️ bar 数量 {self.bar_count_min}~{self.bar_count_max},"
+                f"差异过大 —— 横截面必须按日期对齐,禁止用数组下标"
+            )
+        for i in self.issues[:10]:
+            lines.append(f"  {'✗' if i.fatal else '⚠️'} {i.symbol}: {i.detail}")
+        if len(self.issues) > 10:
+            lines.append(f"  ... 另 {len(self.issues) - 10} 条")
+        return "\n".join(lines)
+
+
+class QuantileStat(BaseModel):
+    """分层回测里某一档的表现。"""
+
+    q: int
+    mean: float
+    median: float
+    annual_median: float
+    win_rate: float
+    sharpe: float
+
+
+class FactorEvidence(BaseModel):
+    """一个因子的完整证据链 —— 缺任何一项都不足以据此建策略。
+
+    **IC 只是入场券。** 实测低波_60日 IC +0.066 看着像好因子,分层多空却是
+    -31%:最差一期 Q5-Q1 = -59.6% 而同期 IC 仍是 +0.28。秩相关看不见涨幅
+    大小,钱在尾部。所以判决必须看 `passed` 的四项合取。
+    """
+
+    factor: str
+    market: str
+    universe_tier: str = ""
+    n_symbols: int = 0
+    n_periods: int = 0
+    horizon: int = 0
+    date_from: str = ""
+    date_to: str = ""
+
+    # ① 预测力
+    ic_mean: float = 0.0
+    ic_ir: float = 0.0
+    t_stat: float = 0.0
+    n_hypotheses: int = 1          # 一共检验了多少个假设(用于多重检验修正)
+
+    # ② 单调性
+    quantiles: list[QuantileStat] = Field(default_factory=list)
+    monotonicity: float = 0.0
+
+    # ③ 扣费后收益
+    avg_turnover: float = 0.0
+    cost_bps: float = 0.0
+    gross_annual: float = 0.0
+    net_annual: float = 0.0
+    net_sharpe: float = 0.0
+    breakeven_bps: float = 0.0
+
+    # ④ 分段稳健(前视偏差探针:只有后段赚钱 = 选池用了未来信息)
+    subperiod_annual: list[float] = Field(default_factory=list)
+
+    # 选池方式 —— 陷阱四的根源,必须记录以便质疑者审问
+    universe_selection: str = ""
+
+    @property
+    def bonferroni_threshold(self) -> float:
+        """多重检验修正后的 t 门槛(α=0.05 双侧)。
+
+        检验 22 个假设时门槛是 |t|>3.06,不是 1.96 —— 光靠运气就会出现
+        约 1 个「显著」结果。
+        """
+        n = max(self.n_hypotheses, 1)
+        # Šidák 近似的正态分位,足够做门槛判断
+        alpha = 1 - (1 - 0.05) ** (1 / n)
+        return abs(_norm_ppf(alpha / 2))
+
+    def passed(self) -> dict[str, bool]:
+        """四道关,全过才算候选策略的合格证据。"""
+        subs = self.subperiod_annual
+        return {
+            "多重检验": abs(self.t_stat) > self.bonferroni_threshold,
+            "分层单调": self.monotonicity >= 0.75,
+            "扣费为正": self.net_annual > 0,
+            "分段稳定": bool(subs) and all(s > 0 for s in subs),
+        }
+
+    @property
+    def verdict_ok(self) -> bool:
+        return all(self.passed().values())
+
+
+def _norm_ppf(p: float) -> float:
+    """标准正态分位数(Acklam 有理逼近,精度 ~1e-9,够用且无需 scipy)。"""
+    import math
+    if not 0 < p < 1:
+        raise ValueError("p 必须在 (0,1)")
+    a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
+         1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00]
+    b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
+         6.680131188771972e+01, -1.328068155288572e+01]
+    c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
+         -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00]
+    d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00,
+         3.754408661907416e+00]
+    pl, ph = 0.02425, 1 - 0.02425
+    if p < pl:
+        q = math.sqrt(-2 * math.log(p))
+        return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / \
+               ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)
+    if p > ph:
+        q = math.sqrt(-2 * math.log(1 - p))
+        return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / \
+                ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)
+    q = p - 0.5
+    r = q * q
+    return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / \
+           (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1)
