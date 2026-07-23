@@ -39,8 +39,8 @@ import math
 import os
 import statistics as st
 import sys
-import urllib.request
 from datetime import datetime
+from pathlib import Path
 
 import tomllib
 
@@ -85,14 +85,25 @@ def _token() -> str:
         raise SystemExit("找不到 QD_AGENT_TOKEN,请设置环境变量") from e
 
 
-def fetch(market: str, symbol: str, limit: int, tok: str) -> list[dict] | None:
-    url = f"{GATEWAY}/api/agent/v1/klines?market={market}&symbol={symbol}&timeframe=1d&limit={limit}"
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {tok}"})
-    try:
-        d = json.loads(urllib.request.urlopen(req, timeout=40).read())["data"]
-        return d["klines"] if d.get("count", 0) > 0 else None
-    except Exception:
-        return None
+def fetch_opend(market: str, symbols: list[str], years: int):
+    """从富途 OpenD 批量拉取 —— 工厂的统一数据源。
+
+    相比 QuantDinger agent 通道:20年历史、前复权、**带 PE 与换手率**。
+    额度:100 只不同股票/30 天(同一只重复拉不计)。
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+    from datetime import timedelta
+
+    from qsf.data.opend.client import OpenDClient
+    end = datetime.now().date()
+    start = end - timedelta(days=365 * years + 400)   # 多取一年做因子预热
+    with OpenDClient() as c:
+        used, remain = c.quota()
+        print(f"  历史K线额度:已用 {used} / 剩余 {remain}", file=sys.stderr)
+        return c.history_batch(
+            market, symbols, start.isoformat(), end.isoformat(),
+            on_progress=lambda i, n, ok: print(f"\r  拉取 {i}/{n} · 可用 {ok}",
+                                               end="", file=sys.stderr))
 
 
 # --------------------------------------------------------------------------- #
@@ -138,6 +149,15 @@ FACTORS: dict[str, callable] = {
     "动量_12减1":  lambda c, v: (c[-21] / c[-250] - 1.0) if len(c) >= 250 and c[-250] else None,
 }
 
+# 需要 PE / 换手率的因子 —— 只有 OpenD 数据源能算(QuantDinger agent 通道没有)。
+# A股实证中【价值】是最有效的因子之一,此前完全无法检验。
+FACTORS_EXTRA = {
+    # 低 PE = 价值。PE<=0(亏损)视为无效,不参与排序。
+    "低PE_价值":  lambda pe, tr: (-pe if pe and pe > 0 else None),
+    # 低换手 = 低关注度,常见有溢价
+    "低换手率":   lambda pe, tr: (-tr if tr is not None and tr > 0 else None),
+}
+
 
 def spearman(x: list[float], y: list[float]) -> float | None:
     """秩相关。对异常值稳健,是 IC 的标准算法。"""
@@ -172,24 +192,27 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--market", default="HKStock", choices=list(UNIVERSE))
     p.add_argument("--horizon", type=int, nargs="+", default=[5, 20],
                    help="前瞻期(交易日)")
-    p.add_argument("--bars", type=int, default=500, help="拉多少根日K")
+    p.add_argument("--years", type=int, default=8, help="回溯几年(OpenD 最多20年)")
     p.add_argument("--step", type=int, default=5, help="调仓间隔(交易日)")
     p.add_argument("-o", "--output", help="结果写入 JSON")
     a = p.parse_args(argv)
 
-    tok = _token()
     syms = UNIVERSE[a.market]
-    print(f"=== 因子 IC 检验 · {a.market} · {len(syms)} 只标的 ===", file=sys.stderr)
+    print(f"=== 因子 IC 检验 · {a.market} · {len(syms)} 只标的 · 数据源 OpenD ===",
+          file=sys.stderr)
 
-    data: dict[str, dict] = {}
-    for i, s in enumerate(syms, 1):
-        k = fetch(a.market, s, a.bars, tok)
-        if k and len(k) >= 250:
-            data[s] = {"close": [x["close"] for x in k],
-                       "vol": [x.get("volume") or 0 for x in k],
-                       "ts": [x["time"] for x in k]}
-        print(f"\r  拉取 {i}/{len(syms)} · 可用 {len(data)}", end="", file=sys.stderr)
+    raw = fetch_opend(a.market, syms, a.years)
     print(file=sys.stderr)
+    data: dict[str, dict] = {}
+    for s, bars in raw.items():
+        if len(bars) < 300:
+            continue
+        data[s] = {
+            "close": [b.close for b in bars],
+            "vol":   [b.turnover or b.volume for b in bars],   # 优先成交额
+            "pe":    [b.pe_ratio for b in bars],
+            "tr":    [b.turnover_rate for b in bars],
+        }
 
     if len(data) < 15:
         print(f"❌ 可用标的仅 {len(data)} 只,横截面 IC 不可靠(需 ≥15)", file=sys.stderr)
@@ -201,16 +224,22 @@ def main(argv: list[str] | None = None) -> int:
 
     results: dict = {}
 
-    for fname, ffn in FACTORS.items():
+    ALL = [(n, f, "price") for n, f in FACTORS.items()] + \
+          [(n, f, "fund") for n, f in FACTORS_EXTRA.items()]
+
+    for fname, ffn, kind in ALL:
         results[fname] = {}
         for h in a.horizon:
             ics: list[float] = []
             # 从 250(因子预热) 到 n_bars-h,按 step 取截面
             for t in range(250, n_bars - h, a.step):
                 xs, ys = [], []
-                for s, d in data.items():
-                    c, v = d["close"][:t + 1], d["vol"][:t + 1]
-                    fv = ffn(c, v)
+                for _s, d in data.items():
+                    if kind == "fund":
+                        fv = ffn(d["pe"][t], d["tr"][t])
+                    else:
+                        c, v = d["close"][:t + 1], d["vol"][:t + 1]
+                        fv = ffn(c, v)
                     if fv is None or not math.isfinite(fv):
                         continue
                     fut = d["close"][t + h] / d["close"][t] - 1.0 if d["close"][t] else None

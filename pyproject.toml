@@ -20,7 +20,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# 真实数据源(先留着,mock 模式不需要安装)
+# 富途 OpenD —— 统一数据底座(20年历史 + PE + 换手率,与执行场所同源)
+opend = [
+    "futu-api>=10.4",
+]
+# 其它真实数据源(可选)
 data = [
     "akshare>=1.12",
     "yfinance>=0.2",

@@ -76,10 +76,17 @@ def build_data_provider(config: DataConfig) -> DataProvider:
     """按 config.mode 选择数据源。
 
     - "mock"(默认):离线可复现的 MockDataProvider。
+    - "opend"/"futu":富途 OpenD —— **推荐**,研究数据与执行场所同源,
+      且带 PE/换手率(20年历史)。
     - "live"/"quantdinger":接入本地 QuantDinger 平台的真实数据。
       QuantDinger 依赖延迟导入,mock 模式完全不受影响。
     """
     mode = (config.mode or "mock").lower()
+    if mode in ("opend", "futu"):
+        # 富途 OpenD —— 统一数据底座(20年历史 + PE + 换手率,与执行场所同源)
+        from qsf.data.opend import OpenDDataProvider
+
+        return OpenDDataProvider(config)
     if mode in ("live", "quantdinger", "qd"):
         # 延迟导入:只有真正走 live 时才加载 QuantDinger 相关代码
         from qsf.data.quantdinger import QuantDingerDataProvider

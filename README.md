@@ -89,6 +89,22 @@ export ANTHROPIC_API_KEY=sk-ant-...
 
 把配置里的 `evaluation.provider` 从 `mock` 改成 `anthropic` 即可。三个角色会改由 Claude 扮演;prompt 与 schema 已在 [judge.py](src/qsf/evaluation/judge.py) 里写好。
 
+### 统一数据源:富途 OpenD(推荐)
+
+**研究数据 = 执行数据**,消除研究-执行落差。相比 QuantDinger agent 通道:
+20 年历史、港/美/沪/深四市场、前复权、**带 PE 与换手率**、0.1 秒/只。
+
+```bash
+pip install -e ".[opend]"     # futu-api
+# 确保 Futu_OpenD 已启动(127.0.0.1:11111)
+```
+
+配置 `data.mode: opend`,标的须显式指定(OpenD 无默认标的池接口)。
+实现见 [data/opend/](src/qsf/data/opend/)。
+
+> ⚠️ **硬约束:历史K线额度 100 只不同股票 / 30 天**(同一只重复拉不计)。
+> 扩大标的池前需规划轮换。
+
 ### 真实数据源:QuantDinger 本地平台(已实现)
 
 把本地量化平台 [QuantDinger](http://127.0.0.1:15000) 作为真实数据源——**8 层逻辑一个字都不用改**,只是把 mock 采集器换成打真实网关的采集器。

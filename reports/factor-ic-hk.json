@@ -1,96 +1,116 @@
 {
  "market": "HKStock",
- "n_symbols": 44,
- "n_bars": 1342,
- "generated_at": "2026-07-23T15:00:31.616462",
+ "n_symbols": 43,
+ "n_bars": 1339,
+ "generated_at": "2026-07-23T15:27:36.153963",
  "results": {
   "反转_20日": {
    "20": {
-    "ic_mean": 0.0626,
-    "ic_std": 0.1955,
-    "icir": 0.32,
-    "positive_pct": 0.611,
-    "t_stat": 2.35,
+    "ic_mean": 0.0615,
+    "ic_std": 0.2294,
+    "icir": 0.268,
+    "positive_pct": 0.593,
+    "t_stat": 1.97,
     "n_periods": 54
    }
   },
   "反转_5日": {
    "20": {
-    "ic_mean": 0.0489,
-    "ic_std": 0.172,
-    "icir": 0.284,
-    "positive_pct": 0.537,
-    "t_stat": 2.09,
+    "ic_mean": 0.0594,
+    "ic_std": 0.2128,
+    "icir": 0.279,
+    "positive_pct": 0.611,
+    "t_stat": 2.05,
     "n_periods": 54
    }
   },
   "动量_60日": {
    "20": {
-    "ic_mean": -0.046,
-    "ic_std": 0.2019,
-    "icir": -0.228,
-    "positive_pct": 0.389,
-    "t_stat": -1.67,
+    "ic_mean": -0.0506,
+    "ic_std": 0.2463,
+    "icir": -0.205,
+    "positive_pct": 0.481,
+    "t_stat": -1.51,
     "n_periods": 54
    }
   },
   "动量_120日": {
    "20": {
-    "ic_mean": 0.0134,
-    "ic_std": 0.2397,
-    "icir": 0.056,
-    "positive_pct": 0.519,
-    "t_stat": 0.41,
+    "ic_mean": 0.0085,
+    "ic_std": 0.2605,
+    "icir": 0.033,
+    "positive_pct": 0.556,
+    "t_stat": 0.24,
     "n_periods": 54
    }
   },
   "低波_20日": {
    "20": {
-    "ic_mean": -0.0161,
-    "ic_std": 0.2072,
-    "icir": -0.078,
-    "positive_pct": 0.426,
-    "t_stat": -0.57,
+    "ic_mean": -0.0172,
+    "ic_std": 0.2278,
+    "icir": -0.075,
+    "positive_pct": 0.481,
+    "t_stat": -0.55,
     "n_periods": 54
    }
   },
   "低波_60日": {
    "20": {
-    "ic_mean": -0.0031,
-    "ic_std": 0.2039,
-    "icir": -0.015,
-    "positive_pct": 0.444,
-    "t_stat": -0.11,
+    "ic_mean": 0.0015,
+    "ic_std": 0.2468,
+    "icir": 0.006,
+    "positive_pct": 0.556,
+    "t_stat": 0.05,
     "n_periods": 54
    }
   },
   "低成交额": {
    "20": {
-    "ic_mean": -0.0111,
-    "ic_std": 0.2219,
-    "icir": -0.05,
-    "positive_pct": 0.481,
-    "t_stat": -0.37,
+    "ic_mean": 0.0248,
+    "ic_std": 0.1924,
+    "icir": 0.129,
+    "positive_pct": 0.519,
+    "t_stat": 0.95,
     "n_periods": 54
    }
   },
   "靠近52周高": {
    "20": {
-    "ic_mean": 0.0295,
-    "ic_std": 0.2441,
-    "icir": 0.121,
-    "positive_pct": 0.519,
-    "t_stat": 0.89,
+    "ic_mean": 0.014,
+    "ic_std": 0.2481,
+    "icir": 0.056,
+    "positive_pct": 0.574,
+    "t_stat": 0.41,
     "n_periods": 54
    }
   },
   "动量_12减1": {
    "20": {
-    "ic_mean": 0.0574,
-    "ic_std": 0.2717,
-    "icir": 0.211,
-    "positive_pct": 0.556,
-    "t_stat": 1.55,
+    "ic_mean": 0.0367,
+    "ic_std": 0.274,
+    "icir": 0.134,
+    "positive_pct": 0.537,
+    "t_stat": 0.99,
+    "n_periods": 54
+   }
+  },
+  "低PE_价值": {
+   "20": {
+    "ic_mean": -0.0108,
+    "ic_std": 0.2797,
+    "icir": -0.038,
+    "positive_pct": 0.481,
+    "t_stat": -0.28,
+    "n_periods": 54
+   }
+  },
+  "低换手率": {
+   "20": {
+    "ic_mean": -0.03,
+    "ic_std": 0.1895,
+    "icir": -0.158,
+    "positive_pct": 0.444,
+    "t_stat": -1.16,
     "n_periods": 54
    }
   }
