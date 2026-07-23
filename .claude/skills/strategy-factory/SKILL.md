@@ -114,6 +114,26 @@ submit_structured_tune(
 
 返回 `job_id` → `wait_for_job` 或 `stream_job_until_done`。
 
+> 🚨 **`# @strategy stopLossPct` 注解在 agent 回测端点【完全不生效】。**
+>
+> 根因:`/api/agent/v1/backtests` 只从 payload 读 `strategy_config`
+> (`routes/agent_v1/backtests.py:69`),**从不解析代码里的 `@strategy` 注解** ——
+> 那个解析器只在指标 IDE 那条路径上被调用。
+>
+> **必须显式传 payload**:
+> ```json
+> "strategy_config": {"risk": {"stopLossPct": 0.03, "takeProfitPct": 0.06}}
+> ```
+>
+> **实测对照**(腾讯00700, fast8/slow40, 2年):
+> | 写法 | 收益 | 回撤 |
+> |---|---|---|
+> | 代码注解 3% | 15.39% | −25.90% |
+> | **payload 3%** | **31.44%** | **−19.65%** |
+>
+> 差距巨大 —— 收益翻倍、回撤从超红线变为达标。
+> **不传 payload 的回测,其风控参数全是摆设,回撤数字会系统性偏高。**
+
 **OOS 机制**:前 70% 窗口训练调参,后 30% 用 top-K 重新回测。
 窗口太短会自动关闭 OOS —— 结果里若显示 OOS 未启用,**必须在策略卡里标明**,
 并把该结论的可信度降级。回测窗口建议 ≥ 2 年以保证分割有效。
