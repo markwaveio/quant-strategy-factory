@@ -48,7 +48,7 @@ cd quant-strategy-factory
 bash scripts/install.sh
 ```
 
-安装脚本会创建 `.venv`、安装依赖、安装本仓库的 agent skills、跑测试,并生成一组离线 smoke 报告到 `~/quant-strategy-factory-workspace/reports/`。
+安装脚本会创建 `.venv`、安装依赖、安装本仓库的 agent skills、跑测试,并生成一组离线 smoke 报告到 `~/quant-strategy-factory-workspace/reports/`。真实数据研究默认使用富途 OpenD 的 `configs/opend-hk.yaml`;QuantDinger 暂时不作为默认路径。
 
 ## 八层设计
 
@@ -123,9 +123,9 @@ pip install -e ".[opend]"     # futu-api
 > ⚠️ **硬约束:历史K线额度 100 只不同股票 / 30 天**(同一只重复拉不计)。
 > 扩大标的池前需规划轮换。
 
-### 真实数据源:QuantDinger 本地平台(已实现)
+### 真实数据源:QuantDinger 本地平台(可选,默认关闭)
 
-把本地量化平台 [QuantDinger](http://127.0.0.1:15000) 作为真实数据源——**8 层逻辑一个字都不用改**,只是把 mock 采集器换成打真实网关的采集器。
+当前默认真实数据源是富途 OpenD。QuantDinger 接入保留为后续高级选项,需要时再打开。把本地量化平台 [QuantDinger](http://127.0.0.1:15000) 作为真实数据源时,**8 层逻辑一个字都不用改**,只是把数据源切到网关采集器。
 
 ```bash
 # 1. 确保 QuantDinger 网关在 127.0.0.1:15000 运行

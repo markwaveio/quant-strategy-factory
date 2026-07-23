@@ -135,7 +135,7 @@ qsf run --config configs/opend-hk.yaml \
   --strategies reports/strategies-opend-hk.json
 ```
 
-OpenD 在这里提供历史行情和部分基本面字段。QSF 仍然负责本地 smoke backtest、评审和证据包。
+OpenD 是当前默认真实数据源,提供历史行情和部分基本面字段。QSF 仍然负责本地 smoke backtest、评审和证据包。QuantDinger 暂时关闭,需要服务端回测/执行联动时再单独启用。
 
 ### 3. 把候选送去富途复验
 

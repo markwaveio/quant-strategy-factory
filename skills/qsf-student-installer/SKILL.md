@@ -14,7 +14,7 @@ description: 引导学生在自己的 agent 环境中安装、部署、验证和
 - 在本地运行 `qsf run`
 - 生成决策报告、研究证据包、策略候选 JSON
 - 让 agent 使用仓库内的市场洞察、每日扫描、策略生产、策略评审 skills
-- 可选接入富途 OpenD 做真实历史数据研究
+- 默认接入富途 OpenD 做真实历史数据研究;mock 只用于离线自检
 
 ## 第 1 步:确认仓库位置
 
@@ -44,7 +44,7 @@ GitHub 仓库
 → reports/ 或工作区产出
 ```
 
-默认先跑 mock 离线流程。富途 OpenD 是可选增强,不要作为第一步强制要求。
+安装阶段先跑 mock 离线自检,保证没有行情环境也能确认代码可用。真实数据研究默认走富途 OpenD。QuantDinger 先不启用,除非老师或学生后续明确要求。
 
 ## 第 3 步:询问 agent 平台
 
@@ -72,7 +72,9 @@ cp config/qsf.config.example config/qsf.config
 
 - `SKILLS_DIR`:skill 装到哪里,默认 `auto`
 - `WORKSPACE_DIR`:报告和 smoke test 产物放哪里
-- `INSTALL_OPEND`:是否安装富途 OpenD 依赖
+- `INSTALL_OPEND`:是否安装富途 OpenD 依赖,默认 `true`
+- `DEFAULT_CONFIG`:默认真实数据配置,默认 `configs/opend-hk.yaml`
+- `SMOKE_CONFIG`:离线自检配置,默认 `configs/default.yaml`
 - `RUN_TESTS`:安装后是否跑测试
 - `RUN_SMOKE`:安装后是否跑离线验证
 
@@ -89,11 +91,11 @@ bash scripts/install.sh
 脚本会:
 
 - 创建 `.venv`
-- 安装 `quant-strategy-factory[dev]`
+- 安装 `quant-strategy-factory[dev,opend]`
 - 安装本仓库的 agent skills
 - 创建工作区
 - 运行 `ruff`、`pytest`
-- 跑一次离线 smoke run,生成报告
+- 跑一次 mock 离线 smoke run,生成报告
 
 如果已有旧版 skill,默认跳过不覆盖。升级时才执行:
 
@@ -138,19 +140,12 @@ PYTHONPATH=src python -m qsf.cli run
 
 强调:这些是研究产物,不是实盘指令。
 
-## 第 8 步:可选接入富途 OpenD
+## 第 8 步:运行默认 OpenD 真实数据研究
 
-只有学生已经安装并启动 Futu OpenD 时才做:
+只有学生已经安装并启动 Futu OpenD 时才做。若没有 OpenD,保留 mock 自检结果即可,不要改用 QuantDinger。
 
-1. 修改 `config/qsf.config`: `INSTALL_OPEND=true`
-2. 重新运行:
-
-```bash
-bash scripts/install.sh --update
-```
-
-3. 确认 OpenD 在 `127.0.0.1:11111`
-4. 运行:
+1. 确认 OpenD 在 `127.0.0.1:11111`
+2. 运行:
 
 ```bash
 PYTHONPATH=src python -m qsf.cli run \
@@ -162,6 +157,8 @@ PYTHONPATH=src python -m qsf.cli run \
 
 提醒学生 OpenD 有历史 K 线额度限制,不要随便扩大标的池。
 
+QuantDinger 暂时关闭。除非明确要研究 QuantDinger 服务端回测/执行联动,否则不要读取 `configs/quantdinger.yaml`,也不要要求 `QD_AGENT_TOKEN`。
+
 ## 第 9 步:开始使用
 
 给学生这几个启动话术:
@@ -171,11 +168,11 @@ PYTHONPATH=src python -m qsf.cli run \
 ```
 
 ```text
-跑一轮 qsf mock 离线流程,解释决策报告和研究证据包。
+跑一轮 qsf mock 离线自检流程,解释决策报告和研究证据包。
 ```
 
 ```text
-用 configs/opend-hk.yaml 跑一轮真实数据研究,但不要给实盘建议。
+用默认 OpenD 配置 configs/opend-hk.yaml 跑一轮真实数据研究,但不要给实盘建议。
 ```
 
 ```text

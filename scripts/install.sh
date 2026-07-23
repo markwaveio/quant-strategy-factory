@@ -52,10 +52,11 @@ elif [ -f "$ROOT/config/qsf.config.example" ]; then
 fi
 
 PYTHON_BIN="${PYTHON_BIN:-python3}"
-INSTALL_OPEND="${INSTALL_OPEND:-false}"
+INSTALL_OPEND="${INSTALL_OPEND:-true}"
 RUN_TESTS="${RUN_TESTS:-true}"
 RUN_SMOKE="${RUN_SMOKE:-true}"
-DEFAULT_CONFIG="${DEFAULT_CONFIG:-configs/default.yaml}"
+SMOKE_CONFIG="${SMOKE_CONFIG:-configs/default.yaml}"
+DEFAULT_CONFIG="${DEFAULT_CONFIG:-configs/opend-hk.yaml}"
 WORKSPACE_DIR="$(expand_path "${WORKSPACE_DIR:-~/quant-strategy-factory-workspace}")"
 SKILLS_DIR="$(detect_skills_dir)"
 
@@ -63,6 +64,9 @@ echo "QSF 学员部署"
 echo "ROOT=$ROOT"
 echo "SKILLS_DIR=$SKILLS_DIR"
 echo "WORKSPACE_DIR=$WORKSPACE_DIR"
+echo "INSTALL_OPEND=$INSTALL_OPEND"
+echo "SMOKE_CONFIG=$SMOKE_CONFIG"
+echo "DEFAULT_CONFIG=$DEFAULT_CONFIG"
 
 command -v "$PYTHON_BIN" >/dev/null 2>&1 || fail "找不到 Python:$PYTHON_BIN"
 ok "$($PYTHON_BIN --version 2>&1)"
@@ -112,11 +116,12 @@ fi
 
 if [ "$RUN_SMOKE" = "true" ]; then
   "$ROOT/.venv/bin/python" -m qsf.cli run \
-    --config "$DEFAULT_CONFIG" \
+    --config "$SMOKE_CONFIG" \
     --report "$WORKSPACE_DIR/reports/decision-smoke.md" \
     --research-report "$WORKSPACE_DIR/reports/research-smoke.md" \
     --strategies "$WORKSPACE_DIR/reports/strategies-smoke.json" >/tmp/qsf-install-smoke.log
   ok "离线 smoke run 通过:$WORKSPACE_DIR/reports"
 fi
 
+echo "默认真实数据配置:$DEFAULT_CONFIG"
 echo "完成。重启或刷新你的 AI 助手后,可说:使用 qsf-student-installer 帮我跑一轮量化策略工厂。"
