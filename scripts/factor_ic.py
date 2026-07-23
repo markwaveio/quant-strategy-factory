@@ -199,7 +199,6 @@ def main(argv: list[str] | None = None) -> int:
     n_bars = min(len(d["close"]) for d in data.values())
     print(f"  可用 {len(data)} 只 × {n_bars} 根日K\n", file=sys.stderr)
 
-    max_h = max(a.horizon)
     results: dict = {}
 
     for fname, ffn in FACTORS.items():
