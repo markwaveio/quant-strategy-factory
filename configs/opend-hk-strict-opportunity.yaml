@@ -1,0 +1,84 @@
+# OpenD 港股严格机会模式
+#
+# 目标:只在扫描分数过线时生成候选,适合真实交易前的机会筛选。
+# 如果当天市场平静,这个模式可能不会产出新策略。
+
+run_id: opend-hk-strict-opportunity
+data:
+  mode: opend
+  market: HKStock
+  symbols:
+  - '00700'
+  - 09988
+  - 03690
+  - 01810
+  - 09618
+  - '01024'
+  - 09999
+  - 00268
+  - 00939
+  - 01398
+  - 03988
+  - 02318
+  - 01299
+  - 00388
+  - 02388
+  - '00011'
+  - '00001'
+  - '00016'
+  - 00688
+  - 01109
+  - '00012'
+  - 00083
+  - 00883
+  - 00386
+  - 00857
+  - 01088
+  - 02899
+  - 00019
+  - 00669
+  - '01766'
+  - 00291
+  - '00322'
+  - '01044'
+  - '02020'
+  - 06618
+  - 01093
+  - '01177'
+  - 02269
+  - '00762'
+  - 00941
+  - 00728
+  - '00002'
+  - '00003'
+  - '00006'
+  lookback_days: 500
+  seed: 42
+scan:
+  enabled: true
+  max_candidates: 20
+  min_score: 0.35
+  momentum_threshold: 0.06
+  volatility_threshold: 0.35
+  volume_surge_threshold: 1.8
+  near_high_threshold: 0.98
+strategy:
+  param_search: true
+  max_variants: 80
+  min_trades: 10
+evaluation:
+  provider: mock
+  model: claude-opus-4-8
+  roles:
+  - skeptic
+  - risk_officer
+  - committee
+  approve_threshold: 0.6
+  max_drawdown_limit: 0.25
+backtest:
+  initial_cash: 1000000
+  fee_bps: 5
+  slippage_bps: 2
+  risk_free_rate: 0.02
+memory_path: data_store/memory/memory.jsonl
+report_dir: reports

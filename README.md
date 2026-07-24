@@ -22,15 +22,21 @@ qsf run
 # 用配置文件跑,并把 Markdown 报告落盘
 qsf run --config configs/default.yaml --report reports/latest.md
 
-# 同时导出研究证据包与策略候选 JSON
-qsf run --config configs/opend-hk.yaml \
-  --report reports/run-opend-hk.md \
-  --research-report reports/research-opend-hk.md \
-  --strategies reports/strategies-opend-hk.json
+# 每日研究模式:即使当天无显著新信号,也会产出研究候选
+qsf run --config configs/opend-hk-daily-research.yaml \
+  --report reports/run-opend-hk-daily.md \
+  --research-report reports/research-opend-hk-daily.md \
+  --strategies reports/strategies-opend-hk-daily.json
+
+# 严格机会模式:只有扫描过线才产出候选
+qsf run --config configs/opend-hk-strict-opportunity.yaml \
+  --report reports/run-opend-hk-strict.md \
+  --research-report reports/research-opend-hk-strict.md \
+  --strategies reports/strategies-opend-hk-strict.json
 
 # 把策略候选 JSON 转成富途策略编辑器可粘贴代码
 python scripts/export_futu_strategy.py \
-  --from-strategies reports/strategies-opend-hk.json \
+  --from-strategies reports/strategies-opend-hk-daily.json \
   --output-dir reports/futu \
   --backtest-range "最近 500 个交易日/约 2 年" \
   --initial-cash "100000 HKD" \

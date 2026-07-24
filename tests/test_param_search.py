@@ -47,6 +47,52 @@ def test_search_returns_params_and_marks_searched():
     assert results
 
 
+def test_search_scores_params_by_oos_sharpe_when_available():
+    class Engine:
+        def run(self, proposal, snapshot):
+            fast = proposal.params["fast"]
+            if fast == 5:
+                return type("M", (), {"sharpe": 3.0, "oos_sharpe": -1.0, "n_trades": 20})()
+            return type("M", (), {"sharpe": 0.5, "oos_sharpe": 0.8, "n_trades": 20})()
+
+    snap = _snapshot({"S1": [100 + i for i in range(120)]})
+    searcher = ParamSearcher(Engine(), max_variants=2)
+
+    params, info, results = searcher.search(
+        "trend",
+        ["S1"],
+        snap,
+        space={"fast": [5, 8], "slow": [20]},
+        min_trades=10,
+    )
+
+    assert params == {"fast": 8, "slow": 20}
+    assert results[0].per_symbol["S1"] == 0.8
+    assert info.pool_worst == 0.8
+
+
+def test_searcher_default_min_trades_filters_results():
+    class Engine:
+        def run(self, proposal, snapshot):
+            fast = proposal.params["fast"]
+            if fast == 5:
+                return type("M", (), {"sharpe": 2.0, "oos_sharpe": 2.0, "n_trades": 3})()
+            return type("M", (), {"sharpe": 0.5, "oos_sharpe": 0.5, "n_trades": 12})()
+
+    snap = _snapshot({"S1": [100 + i for i in range(120)]})
+    searcher = ParamSearcher(Engine(), max_variants=2, min_trades=10)
+
+    params, _, results = searcher.search(
+        "trend",
+        ["S1"],
+        snap,
+        space={"fast": [5, 8], "slow": [20]},
+    )
+
+    assert params == {"fast": 8, "slow": 20}
+    assert results[0].min_trades == 12
+
+
 def test_invalid_combos_are_filtered():
     """快线不得 >= 慢线*0.8 —— 无意义组合应被剔除。"""
     snap = _snapshot({"S1": [100 + i * 0.5 for i in range(120)]})

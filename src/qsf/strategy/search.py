@@ -37,7 +37,7 @@ class ParamResult:
     """一组参数在标的池上的综合表现。"""
 
     params: dict[str, float]
-    per_symbol: dict[str, float] = field(default_factory=dict)  # symbol -> 夏普
+    per_symbol: dict[str, float] = field(default_factory=dict)  # symbol -> 验证夏普
     n_trades: dict[str, int] = field(default_factory=dict)
 
     @property
@@ -90,9 +90,16 @@ def _is_valid(family: str, params: dict) -> bool:
 class ParamSearcher:
     """在标的池上网格搜索,按稳健性挑参数。"""
 
-    def __init__(self, engine: BacktestEngine, *, max_variants: int = 48) -> None:
+    def __init__(
+        self,
+        engine: BacktestEngine,
+        *,
+        max_variants: int = 48,
+        min_trades: int = 5,
+    ) -> None:
         self.engine = engine
         self.max_variants = max_variants
+        self.min_trades = min_trades
 
     def search(
         self,
@@ -101,7 +108,7 @@ class ParamSearcher:
         snapshot: MarketSnapshot,
         space: dict[str, list] | None = None,
         *,
-        min_trades: int = 5,
+        min_trades: int | None = None,
     ) -> tuple[dict[str, float], ParamSearchInfo, list[ParamResult]]:
         """返回 (最稳健的参数, 搜索元信息, 全部结果按稳健性排序)。
 
@@ -122,13 +129,14 @@ class ParamSearcher:
                     symbol=sym, rationale="参数搜索", params=params,
                 )
                 m = self.engine.run(proposal, snapshot)
-                r.per_symbol[sym] = m.sharpe
+                r.per_symbol[sym] = m.oos_sharpe if m.oos_sharpe is not None else m.sharpe
                 r.n_trades[sym] = m.n_trades
             if r.per_symbol:
                 results.append(r)
 
         # 样本不足的先淘汰;若全被淘汰则保留原集合(总比无解好,但会在 info 里体现)
-        viable = [r for r in results if r.min_trades >= min_trades] or results
+        trade_floor = self.min_trades if min_trades is None else min_trades
+        viable = [r for r in results if r.min_trades >= trade_floor] or results
         viable.sort(key=lambda r: r.sort_key(), reverse=True)
 
         best = viable[0] if viable else None

@@ -1,0 +1,78 @@
+# OpenD 港股每日研究模式
+#
+# 目标:每天都产出一批研究候选,用于教学、策略库沉淀和富途复验。
+# 这不是“每日都有交易机会”的保证;它会在无明显新信号时继续做基线趋势研究。
+
+run_id: opend-hk-daily-research
+data:
+  mode: opend
+  market: HKStock
+  symbols:
+  - '00700'
+  - 09988
+  - 03690
+  - 01810
+  - 09618
+  - '01024'
+  - 09999
+  - 00268
+  - 00939
+  - 01398
+  - 03988
+  - 02318
+  - 01299
+  - 00388
+  - 02388
+  - '00011'
+  - '00001'
+  - '00016'
+  - 00688
+  - 01109
+  - '00012'
+  - 00083
+  - 00883
+  - 00386
+  - 00857
+  - 01088
+  - 02899
+  - 00019
+  - 00669
+  - '01766'
+  - 00291
+  - '00322'
+  - '01044'
+  - '02020'
+  - 06618
+  - 01093
+  - '01177'
+  - 02269
+  - '00762'
+  - 00941
+  - 00728
+  - '00002'
+  - '00003'
+  - '00006'
+  lookback_days: 500
+  seed: 42
+scan:
+  enabled: false
+strategy:
+  param_search: true
+  max_variants: 80
+  min_trades: 10
+evaluation:
+  provider: mock
+  model: claude-opus-4-8
+  roles:
+  - skeptic
+  - risk_officer
+  - committee
+  approve_threshold: 0.6
+  max_drawdown_limit: 0.25
+backtest:
+  initial_cash: 1000000
+  fee_bps: 5
+  slippage_bps: 2
+  risk_free_rate: 0.02
+memory_path: data_store/memory/memory.jsonl
+report_dir: reports

@@ -145,21 +145,23 @@ PYTHONPATH=src python -m qsf.cli run
 只有学生已经安装并启动 Futu OpenD 时才做。若没有 OpenD,保留 mock 自检结果即可,不要改用 QuantDinger。
 
 1. 确认 OpenD 在 `127.0.0.1:11111`
-2. 运行:
+2. 每日研究模式用这个配置。它会每天产出研究候选,但不代表每天都有交易机会:
 
 ```bash
 PYTHONPATH=src python -m qsf.cli run \
-  --config configs/opend-hk.yaml \
-  --report reports/run-opend-hk.md \
-  --research-report reports/research-opend-hk.md \
-  --strategies reports/strategies-opend-hk.json
+  --config configs/opend-hk-daily-research.yaml \
+  --report reports/run-opend-hk-daily.md \
+  --research-report reports/research-opend-hk-daily.md \
+  --strategies reports/strategies-opend-hk-daily.json
 ```
+
+3. 严格机会模式用 `configs/opend-hk-strict-opportunity.yaml`;当天扫描没有过线信号时,可能不会产出新策略。
 
 如需生成富途策略编辑器可粘贴代码,继续运行:
 
 ```bash
 python scripts/export_futu_strategy.py \
-  --from-strategies reports/strategies-opend-hk.json \
+  --from-strategies reports/strategies-opend-hk-daily.json \
   --output-dir reports/futu \
   --backtest-range "最近 500 个交易日/约 2 年" \
   --initial-cash "100000 HKD" \

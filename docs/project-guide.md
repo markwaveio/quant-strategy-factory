@@ -139,11 +139,29 @@ qsf run --config configs/opend-hk.yaml \
 
 OpenD 是当前默认真实数据源,提供历史行情和部分基本面字段。QSF 仍然负责本地 smoke backtest、评审和证据包。QuantDinger 暂时关闭,需要服务端回测/执行联动时再单独启用。
 
+如果目标是每天都有研究候选,使用每日研究模式:
+
+```bash
+qsf run --config configs/opend-hk-daily-research.yaml \
+  --report reports/run-opend-hk-daily.md \
+  --research-report reports/research-opend-hk-daily.md \
+  --strategies reports/strategies-opend-hk-daily.json
+```
+
+如果目标是只在机会过线时才生成候选,使用严格机会模式:
+
+```bash
+qsf run --config configs/opend-hk-strict-opportunity.yaml \
+  --report reports/run-opend-hk-strict.md \
+  --research-report reports/research-opend-hk-strict.md \
+  --strategies reports/strategies-opend-hk-strict.json
+```
+
 ### 3. 把候选送去富途复验
 
 ```bash
 python scripts/export_futu_strategy.py \
-  --from-strategies reports/strategies-opend-hk.json \
+  --from-strategies reports/strategies-opend-hk-daily.json \
   --output-dir reports/futu \
   --backtest-range "最近 500 个交易日/约 2 年" \
   --initial-cash "100000 HKD" \

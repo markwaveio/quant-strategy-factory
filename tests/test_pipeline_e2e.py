@@ -58,3 +58,20 @@ def test_summary_counts(tmp_path):
     summary = Pipeline.summarize(result)
     assert summary["proposals"] == len(result.proposals)
     assert summary["approved"] + summary["rejected"] <= summary["proposals"]
+
+
+def test_opend_hk_daily_and_strict_configs_load():
+    daily = Config.from_yaml("configs/opend-hk-daily-research.yaml")
+    strict = Config.from_yaml("configs/opend-hk-strict-opportunity.yaml")
+
+    assert daily.data.mode == "opend"
+    assert daily.data.lookback_days == 500
+    assert daily.scan.enabled is False
+    assert daily.strategy.param_search is True
+    assert daily.strategy.min_trades == 10
+
+    assert strict.data.mode == "opend"
+    assert strict.data.lookback_days == 500
+    assert strict.scan.enabled is True
+    assert strict.scan.min_score == 0.35
+    assert strict.strategy.param_search is True

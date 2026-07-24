@@ -85,6 +85,7 @@ class Pipeline:
                 searcher=ParamSearcher(
                     BacktestEngine(config.backtest),
                     max_variants=config.strategy.max_variants,
+                    min_trades=config.strategy.min_trades,
                 )
             )
         else:
