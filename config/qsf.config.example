@@ -5,5 +5,5 @@ INSTALL_OPEND=true
 RUN_TESTS=true
 RUN_SMOKE=true
 SMOKE_CONFIG=configs/default.yaml
-DEFAULT_CONFIG=configs/opend-hk.yaml
+DEFAULT_CONFIG=configs/opend-hk-daily-research.yaml
 OPEND_CONFIG=configs/opend-hk.yaml

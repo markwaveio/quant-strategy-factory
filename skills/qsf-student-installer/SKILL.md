@@ -15,6 +15,7 @@ description: 引导学生在自己的 agent 环境中安装、部署、验证和
 - 生成决策报告、研究证据包、策略候选 JSON
 - 让 agent 使用仓库内的市场洞察、每日扫描、策略生产、策略评审 skills
 - 默认接入富途 OpenD 做真实历史数据研究;mock 只用于离线自检
+- 理解完整闭环:QSF 本地粗筛 → 富途复验 → 截图复盘导入 → 记忆层沉淀 → 报告索引归档
 
 ## 第 1 步:确认仓库位置
 
@@ -73,7 +74,7 @@ cp config/qsf.config.example config/qsf.config
 - `SKILLS_DIR`:skill 装到哪里,默认 `auto`
 - `WORKSPACE_DIR`:报告和 smoke test 产物放哪里
 - `INSTALL_OPEND`:是否安装富途 OpenD 依赖,默认 `true`
-- `DEFAULT_CONFIG`:默认真实数据配置,默认 `configs/opend-hk.yaml`
+- `DEFAULT_CONFIG`:默认真实数据配置,默认 `configs/opend-hk-daily-research.yaml`
 - `SMOKE_CONFIG`:离线自检配置,默认 `configs/default.yaml`
 - `RUN_TESTS`:安装后是否跑测试
 - `RUN_SMOKE`:安装后是否跑离线验证
@@ -140,6 +141,29 @@ PYTHONPATH=src python -m qsf.cli run
 
 强调:Markdown 策略卡/研究证据包是研究产物,不是富途策略编辑器代码,也不是实盘指令。
 
+## 工厂逻辑:先筛选,再复验,再复盘
+
+向学生解释这套系统时,用这条链路:
+
+```text
+OpenD 历史行情
+→ QSF 生成洞察和策略候选
+→ 本地 smoke backtest + OOS 口径粗筛
+→ 只把 promote_to_sim 导出成富途策略代码
+→ 学生在富途里回测/模拟
+→ agent 读取截图并写入 futu-review YAML
+→ import_futu_review 写入复盘和 memory
+→ curate_reports 生成 reports/README.md
+```
+
+关键边界:
+
+- QSF 负责研究筛选,不是富途官方回测。
+- `reports/README.md` 是每天第一入口,不是随机打开 reports 里的文件。
+- `futu-oos/` 是要去富途复验的代码,不是实盘授权。
+- `futu-reviews/` 是富途截图复盘后的结果,会进入记忆层。
+- `_archive/` 是旧口径或中间产物,默认不要看。
+
 ## 第 8 步:运行默认 OpenD 真实数据研究
 
 只有学生已经安装并启动 Futu OpenD 时才做。若没有 OpenD,保留 mock 自检结果即可,不要改用 QuantDinger。
@@ -204,11 +228,15 @@ QuantDinger 暂时关闭。除非明确要研究 QuantDinger 服务端回测/执
 ```
 
 ```text
-用默认 OpenD 配置 configs/opend-hk.yaml 跑一轮真实数据研究,但不要给实盘建议。
+用每日研究配置 configs/opend-hk-daily-research.yaml 跑一轮真实数据研究,但不要给实盘建议。
 ```
 
 ```text
 根据 research report,挑出可以进入富途回测或模拟交易观察的候选。
+```
+
+```text
+我会上传富途回测截图。请读取 templates/futu-review.example.yaml,从截图提取收益、回撤、夏普、交易次数和区间,写入 reports/futu-review-01177.yaml,然后运行 import_futu_review 和 curate_reports。
 ```
 
 ## 边界

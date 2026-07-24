@@ -10,14 +10,25 @@
 市场数据
 → 市场洞察
 → 策略候选
-→ 本地快速回测
+→ 本地快速回测 + OOS 口径粗筛
 → AI/规则评审
 → 决策报告
 → 研究证据包
-→ 富途/QuantDinger 等外部系统复验或模拟交易
+→ 富途代码导出
+→ 富途回测/模拟复验
+→ 截图复盘导入
+→ 记忆层和 reports/README.md
 ```
 
 它的核心价值是先把低质量策略挡在研究阶段,把少数有证据链的候选送去更严肃的外部回测、模拟交易或人工复核。
+
+换句话说,QSF 不是“每天强行给交易信号”的机器,而是一个漏斗:
+
+```text
+多候选 → 严格过滤 → 少量 promote_to_sim → 富途复验 → 复盘沉淀
+```
+
+如果要每天都有研究材料,用每日研究模式;如果只想看明显机会,用严格机会模式。
 
 ## 根目录说明
 
@@ -55,6 +66,37 @@
 | `review/` | 复盘层 | 汇总本轮通过率、最佳策略、风险点,并渲染决策 Markdown |
 | `research/` | 研究证据包 | 把候选策略、回测、评审、下一步整理成可归档 Markdown 和 JSON |
 | `cli.py` | 命令入口 | 提供 `qsf run`、报告导出、研究证据包导出、策略 JSON 导出 |
+
+## 产物阅读规则
+
+每天不要从 `reports/` 里随机打开文件。先看:
+
+```text
+reports/README.md
+```
+
+它由 `scripts/curate_reports.py` 生成,会把结论压缩成一页:
+
+| 字段 | 含义 |
+|---|---|
+| 日期 | 这轮整理发生的时间 |
+| 最优候选 | 当前最值得先验证的标的和参数 |
+| 推荐指数 | 综合状态、OOS、回撤、交易次数后的优先级 |
+| 机会指数 | 信号和策略表现层面的机会强度 |
+| OOS 超额 | 样本外是否跑赢买入持有 |
+| 最大回撤 | 是否触碰风险红线 |
+| 富途代码 | 可以复制到富途策略编辑器复验的 `.py` |
+| 最新富途复盘 | 截图识别后导入的复盘结论 |
+
+目录约定:
+
+| 路径 | 状态 |
+|---|---|
+| `reports/README.md` | 每天第一入口 |
+| `reports/futu-oos/` | 最新 OOS 口径下导出的富途代码 |
+| `reports/futu-reviews/` | 富途截图复盘导入后的总结 |
+| `reports/_archive/` | 旧口径、过期或中间产物,默认不要看 |
+| 普通 `run-*.md` / `research-*.md` / `strategies-*.json` | 中间材料,必要时追溯 |
 
 ## 一次运行发生什么
 
@@ -131,22 +173,15 @@ pytest
 
 ```bash
 pip install -e ".[opend]"
-qsf run --config configs/opend-hk.yaml \
-  --report reports/run-opend-hk.md \
-  --research-report reports/research-opend-hk.md \
-  --strategies reports/strategies-opend-hk.json
-```
-
-OpenD 是当前默认真实数据源,提供历史行情和部分基本面字段。QSF 仍然负责本地 smoke backtest、评审和证据包。QuantDinger 暂时关闭,需要服务端回测/执行联动时再单独启用。
-
-如果目标是每天都有研究候选,使用每日研究模式:
-
-```bash
 qsf run --config configs/opend-hk-daily-research.yaml \
   --report reports/run-opend-hk-daily.md \
   --research-report reports/research-opend-hk-daily.md \
   --strategies reports/strategies-opend-hk-daily.json
 ```
+
+OpenD 是当前默认真实数据源,提供历史行情和部分基本面字段。QSF 仍然负责本地 smoke backtest、评审和证据包。QuantDinger 暂时关闭,需要服务端回测/执行联动时再单独启用。
+
+上面的每日研究模式即使当天没有显著新信号,也会继续产出研究候选,用于教学、策略库沉淀和富途复验。
 
 如果目标是只在机会过线时才生成候选,使用严格机会模式:
 
@@ -156,6 +191,13 @@ qsf run --config configs/opend-hk-strict-opportunity.yaml \
   --research-report reports/research-opend-hk-strict.md \
   --strategies reports/strategies-opend-hk-strict.json
 ```
+
+两种模式的差异:
+
+| 模式 | 配置 | 用途 |
+|---|---|---|
+| 每日研究 | `configs/opend-hk-daily-research.yaml` | 每天都有研究候选,适合教学和策略库沉淀 |
+| 严格机会 | `configs/opend-hk-strict-opportunity.yaml` | 只看扫描过线机会,当天平静时可能没有新策略 |
 
 ### 3. 把候选送去富途复验
 

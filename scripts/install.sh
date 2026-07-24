@@ -56,7 +56,7 @@ INSTALL_OPEND="${INSTALL_OPEND:-true}"
 RUN_TESTS="${RUN_TESTS:-true}"
 RUN_SMOKE="${RUN_SMOKE:-true}"
 SMOKE_CONFIG="${SMOKE_CONFIG:-configs/default.yaml}"
-DEFAULT_CONFIG="${DEFAULT_CONFIG:-configs/opend-hk.yaml}"
+DEFAULT_CONFIG="${DEFAULT_CONFIG:-configs/opend-hk-daily-research.yaml}"
 WORKSPACE_DIR="$(expand_path "${WORKSPACE_DIR:-~/quant-strategy-factory-workspace}")"
 SKILLS_DIR="$(detect_skills_dir)"
 
