@@ -37,11 +37,14 @@ qsf run --config configs/opend-hk-strict-opportunity.yaml \
 # 把策略候选 JSON 转成富途策略编辑器可粘贴代码
 python scripts/export_futu_strategy.py \
   --from-strategies reports/strategies-opend-hk-daily.json \
-  --output-dir reports/futu \
+  --output-dir reports/futu-oos \
   --backtest-range "最近 500 个交易日/约 2 年" \
   --initial-cash "100000 HKD" \
   --bar-note "日 K / RTH / CLOSE" \
   --approved-only
+
+# 生成 reports/README.md,并把旧版/中间产物归档
+python scripts/curate_reports.py --archive-stale
 
 # 启用参数网格搜索(configs 里设 strategy.param_search: true)
 # 关闭时用的是【未经搜索】的基线默认值,其回测结论不能作为投资依据

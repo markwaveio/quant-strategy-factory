@@ -162,7 +162,7 @@ qsf run --config configs/opend-hk-strict-opportunity.yaml \
 ```bash
 python scripts/export_futu_strategy.py \
   --from-strategies reports/strategies-opend-hk-daily.json \
-  --output-dir reports/futu \
+  --output-dir reports/futu-oos \
   --backtest-range "最近 500 个交易日/约 2 年" \
   --initial-cash "100000 HKD" \
   --bar-note "日 K / RTH / CLOSE" \
@@ -171,6 +171,14 @@ python scripts/export_futu_strategy.py \
 
 这一步是把候选策略 JSON 里的趋势策略转成富途策略编辑器可粘贴的代码。每个 `.py` 文件仍只用于富途回测或模拟验证,不是实盘授权。
 导出的文件顶部会写入标的池、建议回测区间、初始资金、K 线规则、快慢周期和开仓数量,方便在富途里按同一口径复验。
+
+整理成一眼可读的索引:
+
+```bash
+python scripts/curate_reports.py --archive-stale
+```
+
+之后每天先看 `reports/README.md`:它会列出日期、推荐指数、机会指数、OOS 超额、回撤、富途代码路径,并把旧口径或中间产物放到 `reports/_archive/`。
 
 如果只想手动导出一组双均线参数:
 
