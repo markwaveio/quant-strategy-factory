@@ -43,6 +43,10 @@ python scripts/export_futu_strategy.py \
   --bar-note "日 K / RTH / CLOSE" \
   --approved-only
 
+# 富途回测后,让 agent 根据截图填模板并导入复盘
+cp templates/futu-review.example.yaml reports/futu-review-01177.yaml
+python scripts/import_futu_review.py reports/futu-review-01177.yaml
+
 # 生成 reports/README.md,并把旧版/中间产物归档
 python scripts/curate_reports.py --archive-stale
 

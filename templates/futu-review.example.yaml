@@ -1,0 +1,24 @@
+date: 2026-07-24
+strategy_id: trend:01177:example
+symbol: "01177"
+family: trend
+strategy_version: futu-review-v1
+source_file: reports/futu-oos/futu-01177-trend-fast8-slow20.py
+params:
+  fast: 8
+  slow: 20
+regime: strength-and-regime-shift
+futu_backtest:
+  start: 2024-03-15
+  end: 2026-07-24
+  initial_cash: 100000
+  total_return: 0.4625
+  annual_return: 0.18
+  max_drawdown: -0.18
+  sharpe: 1.21
+  trades: 12
+  benchmark_return: 0.52
+  verdict: neutral
+notes:
+  - 截图显示绝对收益为正,但需对比买入持有。
+  - 若跑输基准,只作为降波动或择时研究,不要进入实盘。

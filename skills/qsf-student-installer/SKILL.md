@@ -171,6 +171,14 @@ python scripts/export_futu_strategy.py \
 
 导出的 `.py` 文件顶部会包含富途运行备注:标的池、标的选择方式、建议回测区间、初始资金、K 线规则、快慢周期和开仓数量。
 
+富途回测后,让学生把截图发给 agent。agent 需要读取 `templates/futu-review.example.yaml`,从截图里提取收益、回撤、夏普、交易次数、区间和结论,写成 YAML 后运行:
+
+```bash
+python scripts/import_futu_review.py reports/futu-review-01177.yaml
+```
+
+这会生成 `reports/futu-reviews/*.md`,并写入 `data_store/memory/memory.jsonl`。
+
 最后整理报告目录:
 
 ```bash

@@ -210,6 +210,10 @@ def _render_index(
             lines.append(f"- 富途代码:{best.futu_file.relative_to(reports_dir)}")
     else:
         lines.append("- 今天没有进入模拟验证的候选。")
+    review_files = sorted(reports_dir.glob("futu-reviews/*.md"))
+    if review_files:
+        latest_review = review_files[-1]
+        lines.append(f"- 最新富途复盘:{latest_review.relative_to(reports_dir)}")
     lines.append("")
 
     lines.extend([
@@ -235,12 +239,14 @@ def _render_index(
         "- `reports/README.md`:每天先看这一页。",
         "- `factory-oos/strategy-cards*.md`:人工阅读版结论。",
         "- `futu-oos/`:拿去富途复验的代码。",
+        "- `futu-reviews/`:富途截图由 agent 分析后写入的复盘总结。",
         "- `_archive/`:旧口径、过期或中间产物;默认不要看。",
         "",
         "## 统计",
         "",
         f"- 候选总数:{len(all_candidates)}",
         f"- 进入模拟验证:{len(promoted)}",
+        f"- 富途复盘:{len(review_files)}",
         f"- 本次归档:{len(archived)}",
     ])
     return "\n".join(lines) + "\n"

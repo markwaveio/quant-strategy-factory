@@ -172,6 +172,15 @@ python scripts/export_futu_strategy.py \
 这一步是把候选策略 JSON 里的趋势策略转成富途策略编辑器可粘贴的代码。每个 `.py` 文件仍只用于富途回测或模拟验证,不是实盘授权。
 导出的文件顶部会写入标的池、建议回测区间、初始资金、K 线规则、快慢周期和开仓数量,方便在富途里按同一口径复验。
 
+富途回测后,把截图交给 agent 分析,让它按模板生成复盘 YAML:
+
+```bash
+cp templates/futu-review.example.yaml reports/futu-review-01177.yaml
+python scripts/import_futu_review.py reports/futu-review-01177.yaml
+```
+
+导入后会生成 `reports/futu-reviews/*.md`,并把富途结果写入记忆层。OpenD 不能直接读取富途策略编辑器回测报告,所以这里采用截图识别后结构化导入。
+
 整理成一眼可读的索引:
 
 ```bash
