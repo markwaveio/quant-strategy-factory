@@ -72,7 +72,17 @@ cd quant-strategy-factory
 bash scripts/install.sh
 ```
 
-安装脚本会创建 `.venv`、安装依赖、安装本仓库的 agent skills、跑测试,并生成一组离线 smoke 报告到 `~/quant-strategy-factory-workspace/reports/`。真实数据研究默认使用富途 OpenD 的 `configs/opend-hk.yaml`;QuantDinger 暂时不作为默认路径。
+安装脚本会创建 `.venv`、安装依赖、安装本仓库的 agent skills、跑测试,并生成一组离线 smoke 报告到 `~/quant-strategy-factory-workspace/reports/`。真实数据研究默认使用富途 OpenD;日常产候选走 `configs/opend-hk-daily-research.yaml`,只等机会触发走 `configs/opend-hk-strict-opportunity.yaml`。QuantDinger 暂时不作为默认路径。
+
+## 每天看哪里
+
+每日研究跑完后,优先看:
+
+```text
+reports/README.md
+```
+
+它会把大量报告收敛成一页:日期、最优候选、推荐指数、机会指数、OOS 超额、最大回撤和对应富途代码路径。旧口径或中间产物会进入 `reports/_archive/`,不要从 `reports/` 里随机打开旧文件。
 
 ## 八层设计
 
@@ -83,22 +93,23 @@ bash scripts/install.sh
 | ③ | **策略生成层** | 洞察 → `StrategyProposal[]` | [strategy/](src/qsf/strategy/):趋势(双均线)、均值回归(布林/z-score)、新闻事件三族。**参数来自网格搜索**(`strategy.param_search: true`,见 [search.py](src/qsf/strategy/search.py));关闭时用基线默认值,仅供离线跑通 |
 | ④ | **评估层(AI 挑战)** | 提案+回测 → `EvaluationResult` | [evaluation/](src/qsf/evaluation/):**质疑者**(过拟合/拍脑袋参数)、**风险官**(最坏亏多少,一票否决)、**综合评估官**(投委会裁决) |
 | ⑤ | **记忆层** | 结果 → `MemoryRecord` (JSONL) | [memory/store.py](src/qsf/memory/store.py):哪些策略成功过/失败过 + 一句教训,可检索 |
-| ⑥ | **回测层** | 提案+行情 → `BacktestMetrics` | [backtest/](src/qsf/backtest/):**smoke backtest** —— 向量化、计手续费+滑点+信号滞后,用于快速淘汰明显不行的策略。**未建模撮合价/停牌/复权/容量/融券/组合现金/相关性/税费**,真实绩效以 QuantDinger 服务端回测为准 |
+| ⑥ | **回测层** | 提案+行情 → `BacktestMetrics` | [backtest/](src/qsf/backtest/):**smoke backtest** —— 向量化、计手续费+滑点+信号滞后,用于快速淘汰明显不行的策略。**未建模撮合价/停牌/复权/容量/融券/组合现金/相关性/税费**,进入模拟验证前需导出到富途回测复验 |
 | ⑦ | **决策层** | 汇总 → `DecisionReport` | [decision/decider.py](src/qsf/decision/decider.py):只把通过评审的策略转为买/卖/持有/回避 + 仓位建议 |
 | ⑧ | **复盘层** | 一轮结果 → `ReviewNote` | [review/reviewer.py](src/qsf/review/reviewer.py):通过率、最佳策略、关键收获与改进方向 |
 
 所有层只通过 [core/schema.py](src/qsf/core/schema.py) 定义的**数据契约**通信,层与层解耦——想替换某一层(如 mock 数据换真实源),只需换实现,上层无感。编排见 [core/pipeline.py](src/qsf/core/pipeline.py)。
 
-## 数据采集的三种实现(不是三层)
+## 数据采集的多种实现(不是三层)
 
 ①数据层是**一个协议、多种实现**,不需要为"agent 采集"新增层级:
 
 ```text
 ①数据层 (DataProvider 协议)
 ├── MockDataProvider          离线可复现,开发/教学用
-├── QuantDingerDataProvider   Python 调 REST,程序化跑
+├── OpenDDataProvider         富途 OpenD,当前默认真实数据源
+├── QuantDingerDataProvider   可选高级数据源,默认关闭
 └── market-insight skill      agent 实现,对话式跑  ← .claude/skills/
-        ↓ 三者产出同样的 MarketSnapshot + Insight
+        ↓ 产出同样的 MarketSnapshot + Insight
 ②洞察层 → ③策略 → ④评估 → ⑥回测 → ⑦决策 → ⑧复盘
 ```
 
@@ -106,7 +117,7 @@ bash scripts/install.sh
 
 它的算法口径与 [features/extract.py](src/qsf/data/features/extract.py) 一致、阈值与 [insight/engine.py](src/qsf/insight/engine.py) 一致,保证**对话模式与代码模式产出可比**。改阈值时两边要同步。
 
-> 为什么需要它:QuantDinger 的 Agent Gateway **只开放行情**(`get_klines`/`get_price`),不暴露新闻与财报端点。这部分靠 agent 的搜索与判断力补齐——而且新闻解读本就是判断题,LLM 强于关键词规则。
+> 为什么还保留 agent 采集:部分网关只开放行情,不暴露新闻与财报端点。这部分可由 agent 的搜索与判断力补齐——而且新闻解读本就是判断题,LLM 强于关键词规则。
 
 ## 评估层:AI 如何"挑战"策略
 
@@ -183,6 +194,7 @@ qsf run --config configs/quantdinger.yaml --report reports/live.md
 | [docs/project-guide.md](docs/project-guide.md) | **项目导览** — 目录作用、主流程、日常运行路径、富途代码导出、扩展入口 |
 | [docs/quantdinger-setup.md](docs/quantdinger-setup.md) | **接入教程** — 从部署 QuantDinger 到 Codex/Claude Code 接入,含排错表与验收清单(全部命令已实测) |
 | [docs/factor-research-01.md](docs/factor-research-01.md) | **因子研究 01** — 价量因子 IC 检验:港股反转弱有效、美股低波反向;含两条方法论教训 |
+| [docs/factor-research-02.md](docs/factor-research-02.md) | **因子研究 02** — 后续因子实验与复盘 |
 | [docs/three-engine-cross-validation.md](docs/three-engine-cross-validation.md) | **三引擎交叉验证** — 实证发现 `@strategy` 注解不生效、止损参数无万能值等缺陷 |
 | [docs/quantdinger-vs-factory.md](docs/quantdinger-vs-factory.md) | **重叠与互补地图** — 本工厂 8 层 vs QuantDinger 逐层对照,哪些该交给它、哪一处是我们的差异化 |
 | [.claude/skills/market-insight/](.claude/skills/market-insight/SKILL.md) | **市场洞察** — ①②层:单标的采集与洞察 |
@@ -213,8 +225,8 @@ configs/        # YAML 配置
 
 | 局限 | 现状 | 缓解 |
 |---|---|---|
-| **回测是 smoke 级** | 未建模撮合价/停牌/复权/成交量容量/融券/组合现金占用/多标的相关性/税费差异 | 只用于粗筛;真实绩效走 QuantDinger 服务端回测 |
-| **参数搜索仅网格** | `param_search` 默认关闭;开启也只是单机网格,无样本外分割 | 严肃搜索走 QuantDinger `structured-tune`(内置 OOS 70/30) |
+| **回测是 smoke 级** | 未建模撮合价/停牌/复权/成交量容量/融券/组合现金占用/多标的相关性/税费差异 | 只用于粗筛;进入 `promote_to_sim` 后导出到富途复验 |
+| **参数搜索仅网格** | `param_search` 默认关闭;开启后是单机网格,按 OOS Sharpe 优先排序,但仍不是撮合级回测 | 用富途回测/模拟交叉验证;需要服务端自动化时再打开 QuantDinger |
 | **ClaudeLLMJudge 未经生产验证** | 全程 `pragma: no cover`,单测只覆盖 Mock | 启用前必须跑 `scripts/verify_claude_judge.py` 真实验收 |
 | **记忆层是单机 JSONL** | 有溯源与相似检索,但无并发控制、无索引 | 数据量大后应换 SQLite/向量库,接口不变 |
 
