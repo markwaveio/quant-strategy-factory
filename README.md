@@ -32,6 +32,9 @@ qsf run --config configs/opend-hk.yaml \
 python scripts/export_futu_strategy.py \
   --from-strategies reports/strategies-opend-hk.json \
   --output-dir reports/futu \
+  --backtest-range "最近 500 个交易日/约 2 年" \
+  --initial-cash "100000 HKD" \
+  --bar-note "日 K / RTH / CLOSE" \
   --approved-only
 
 # 启用参数网格搜索(configs 里设 strategy.param_search: true)

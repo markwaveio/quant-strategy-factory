@@ -61,6 +61,13 @@ TEMPLATE = '''# ============================================================
 # 参数来源: 网格搜索 {space}
 #           稳健性筛选(覆盖率 > 最差 > 均值), 非人工指定
 # 标的池:   {pool}
+# 富途运行备注:
+#   1. 标的选择: 每次回测/模拟只选择上方标的池中的一个标的;组合表现看策略卡,单标的表现用富途复验。
+#   2. 回测区间: 建议 {backtest_range};至少覆盖完整牛熊/震荡阶段,不要只看最近上涨段。
+#   3. 初始资金: 建议 {initial_cash};资金不足一手时会跳过买入。
+#   4. K线规则:  使用 {bar_note};当前模板内置 BarType.K_DAY,即日 K 收盘价均线。
+#   5. 运行参数: 快线={fast},慢线={slow};来自 QSF 搜索结果,可在富途 UI 中小范围复验。
+#   6. 开仓数量: 默认 {qty} 手;买入按 lot_size() 换算成股数,卖出时清仓可卖数量。
 # ⚠️ 工厂评审结论: {verdict}
 #    {verdict_note}
 # 仅供研究, 非投资建议。
@@ -164,10 +171,12 @@ class Strategy(StrategyBase):
 
 
 def render(fast: int, slow: int, qty: int, title: str, pool: str,
-           space: str, source: str, verdict: str, verdict_note: str) -> str:
+           space: str, source: str, verdict: str, verdict_note: str,
+           backtest_range: str, initial_cash: str, bar_note: str) -> str:
     return TEMPLATE.format(
         title=title, fast=fast, slow=slow, qty=qty, pool=pool, space=space,
         source=source, verdict=verdict, verdict_note=verdict_note,
+        backtest_range=backtest_range, initial_cash=initial_cash, bar_note=bar_note,
     )
 
 
@@ -175,7 +184,8 @@ def _safe_name(value: str) -> str:
     return "".join(c if c.isalnum() or c in ("-", "_") else "-" for c in value).strip("-")
 
 
-def _export_from_strategies(path: str, output_dir: str, qty: int, approved_only: bool) -> int:
+def _export_from_strategies(path: str, output_dir: str, qty: int, approved_only: bool,
+                            backtest_range: str, initial_cash: str, bar_note: str) -> int:
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     strategies = payload.get("strategies", [])
     out = Path(output_dir)
@@ -215,6 +225,9 @@ def _export_from_strategies(path: str, output_dir: str, qty: int, approved_only:
             source=f"策略候选 {sid}",
             verdict=verdict,
             verdict_note=f"{note}\n#    本文件仅用于富途策略编辑器回测/模拟验证,不是实盘授权。",
+            backtest_range=backtest_range,
+            initial_cash=initial_cash,
+            bar_note=bar_note,
         )
         target = out / f"futu-{_safe_name(symbol)}-trend-fast{fast}-slow{slow}.py"
         target.write_text(code, encoding="utf-8")
@@ -241,6 +254,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--fast", type=int, default=8, help="快线周期(默认取自搜索结果)")
     p.add_argument("--slow", type=int, default=40, help="慢线周期")
     p.add_argument("--qty", type=int, default=1, help="开仓手数")
+    p.add_argument("--backtest-range", default="最近 500 个交易日/约 2 年")
+    p.add_argument("--initial-cash", default="100000 HKD")
+    p.add_argument("--bar-note", default="日 K / RTH / CLOSE")
     p.add_argument("--title", default="港股科技趋势跟随 v1")
     p.add_argument("--pool", default="00700 / 09988 / 03690 / 01810")
     p.add_argument("--space", default="fast[5,8,10,15] x slow[20,30,40,60] = 16组 x 4标的")
@@ -255,14 +271,18 @@ def main(argv: list[str] | None = None) -> int:
     a = p.parse_args(argv)
 
     if a.from_strategies:
-        return _export_from_strategies(a.from_strategies, a.output_dir, a.qty, a.approved_only)
+        return _export_from_strategies(
+            a.from_strategies, a.output_dir, a.qty, a.approved_only,
+            a.backtest_range, a.initial_cash, a.bar_note,
+        )
 
     if a.fast >= a.slow:
         print("❌ 快线周期必须小于慢线周期", file=sys.stderr)
         return 1
 
     code = render(a.fast, a.slow, a.qty, a.title, a.pool,
-                  a.space, a.source, a.verdict, a.verdict_note)
+                  a.space, a.source, a.verdict, a.verdict_note,
+                  a.backtest_range, a.initial_cash, a.bar_note)
 
     if a.output:
         with open(a.output, "w", encoding="utf-8") as f:

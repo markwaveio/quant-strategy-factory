@@ -161,8 +161,13 @@ PYTHONPATH=src python -m qsf.cli run \
 python scripts/export_futu_strategy.py \
   --from-strategies reports/strategies-opend-hk.json \
   --output-dir reports/futu \
+  --backtest-range "最近 500 个交易日/约 2 年" \
+  --initial-cash "100000 HKD" \
+  --bar-note "日 K / RTH / CLOSE" \
   --approved-only
 ```
+
+导出的 `.py` 文件顶部会包含富途运行备注:标的池、标的选择方式、建议回测区间、初始资金、K 线规则、快慢周期和开仓数量。
 
 提醒学生 OpenD 有历史 K 线额度限制,不要随便扩大标的池。
 

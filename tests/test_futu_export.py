@@ -37,4 +37,11 @@ def test_export_futu_strategy_from_candidates_json(tmp_path):
     text = files[0].read_text(encoding="utf-8")
     assert "show_variable(10, GlobalType.INT)" in text
     assert "show_variable(20, GlobalType.INT)" in text
+    assert "# 富途运行备注:" in text
+    assert "#   1. 标的选择: 每次回测/模拟只选择上方标的池中的一个标的" in text
+    assert "#   2. 回测区间: 建议 最近 500 个交易日/约 2 年" in text
+    assert "#   3. 初始资金: 建议 100000 HKD" in text
+    assert "#   4. K线规则:  使用 日 K / RTH / CLOSE" in text
+    assert "#   5. 运行参数: 快线=10,慢线=20" in text
+    assert "#   6. 开仓数量: 默认 1 手" in text
     assert "class Strategy(StrategyBase)" in text

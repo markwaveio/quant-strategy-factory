@@ -145,10 +145,14 @@ OpenD 是当前默认真实数据源,提供历史行情和部分基本面字段�
 python scripts/export_futu_strategy.py \
   --from-strategies reports/strategies-opend-hk.json \
   --output-dir reports/futu \
+  --backtest-range "最近 500 个交易日/约 2 年" \
+  --initial-cash "100000 HKD" \
+  --bar-note "日 K / RTH / CLOSE" \
   --approved-only
 ```
 
 这一步是把候选策略 JSON 里的趋势策略转成富途策略编辑器可粘贴的代码。每个 `.py` 文件仍只用于富途回测或模拟验证,不是实盘授权。
+导出的文件顶部会写入标的池、建议回测区间、初始资金、K 线规则、快慢周期和开仓数量,方便在富途里按同一口径复验。
 
 如果只想手动导出一组双均线参数:
 
